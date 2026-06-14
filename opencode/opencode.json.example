@@ -1,0 +1,535 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "autoupdate": false,
+  "model": "llamaswap/qwen3-coder-large",
+  "small_model": "llamaswap/qwen3-coder-large",
+  "default_agent": "orchestrator",
+  "provider": {
+    "llamaswap": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "llama-swap (local)",
+      "options": {
+        "baseURL": "http://127.0.0.1:5099/v1",
+        "apiKey": "llama-local"
+      },
+      "models": {
+        "qwen3-moe-large": {
+          "name": "Qwen3.6 35B MoE (large context)",
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          }
+        },
+        "qwen3-moe": {
+          "name": "Qwen3.6 35B MoE (reasoning)",
+          "limit": {
+            "context": 65536,
+            "output": 8192
+          }
+        },
+        "qwen3-coder": {
+          "name": "Qwen3.6 27B (coder)",
+          "limit": {
+            "context": 65536,
+            "output": 8192
+          }
+        },
+        "qwen3-coder-q6": {
+          "name": "Qwen3.6 27B Q6 (coder)",
+          "limit": {
+            "context": 65536,
+            "output": 8192
+          }
+        },
+        "qwen3-coder-mid": {
+          "name": "Qwen3.6 27B (mid context)",
+          "limit": {
+            "context": 98304,
+            "output": 8192
+          }
+        },
+        "qwen3-coder-mid-q6": {
+          "name": "Qwen3.6 27B Q6 (mid context)",
+          "limit": {
+            "context": 98304,
+            "output": 8192
+          }
+        },
+        "qwen3-coder-large": {
+          "name": "Qwen3.6 27B (large context)",
+          "limit": {
+            "context": 196608,
+            "output": 8192
+          }
+        },
+        "qwen3-vl": {
+          "name": "Qwen3.6 27B VL (vision)",
+          "attachment": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ]
+          },
+          "limit": {
+            "context": 49152,
+            "output": 8192
+          }
+        },
+        "qwen3-moe-vl": {
+          "name": "Qwen3.6 35B MoE VL (vision, strong)",
+          "attachment": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ]
+          },
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
+        },
+        "qwopus-coder-q6": {
+          "name": "Qwopus3.6 27B Coder MTP Q6 (focused)",
+          "limit": {
+            "context": 65536,
+            "output": 8192
+          }
+        },
+        "qwopus-coder-q6:low": {
+          "name": "Qwopus3.6 27B Coder MTP Q6 (focused, low effort)",
+          "limit": {
+            "context": 65536,
+            "output": 8192
+          }
+        },
+        "qwopus-coder-q6:medium": {
+          "name": "Qwopus3.6 27B Coder MTP Q6 (focused, medium effort)",
+          "limit": {
+            "context": 65536,
+            "output": 8192
+          }
+        },
+        "qwopus-coder-q6:high": {
+          "name": "Qwopus3.6 27B Coder MTP Q6 (focused, high effort)",
+          "limit": {
+            "context": 65536,
+            "output": 8192
+          }
+        },
+        "qwopus-coder-mid-q6": {
+          "name": "Qwopus3.6 27B Coder MTP Q6 (mid context)",
+          "limit": {
+            "context": 98304,
+            "output": 8192
+          }
+        },
+        "qwopus-coder-mid-q6:low": {
+          "name": "Qwopus3.6 27B Coder MTP Q6 (mid context, low effort)",
+          "limit": {
+            "context": 98304,
+            "output": 8192
+          }
+        },
+        "qwopus-coder-mid-q6:medium": {
+          "name": "Qwopus3.6 27B Coder MTP Q6 (mid context, medium effort)",
+          "limit": {
+            "context": 98304,
+            "output": 8192
+          }
+        },
+        "qwopus-coder-mid-q6:high": {
+          "name": "Qwopus3.6 27B Coder MTP Q6 (mid context, high effort)",
+          "limit": {
+            "context": 98304,
+            "output": 8192
+          }
+        },
+        "qwopus-coder-large-q6": {
+          "name": "Qwopus3.6 27B Coder MTP Q6 (large context)",
+          "limit": {
+            "context": 196608,
+            "output": 8192
+          }
+        },
+        "qwopus-coder-large-q6:low": {
+          "name": "Qwopus3.6 27B Coder MTP Q6 (large context, low effort)",
+          "limit": {
+            "context": 196608,
+            "output": 8192
+          }
+        },
+        "qwopus-coder-large-q6:medium": {
+          "name": "Qwopus3.6 27B Coder MTP Q6 (large context, medium effort)",
+          "limit": {
+            "context": 196608,
+            "output": 8192
+          }
+        },
+        "qwopus-coder-large-q6:high": {
+          "name": "Qwopus3.6 27B Coder MTP Q6 (large context, high effort)",
+          "limit": {
+            "context": 196608,
+            "output": 8192
+          }
+        }
+      }
+    },
+    "opencode": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "opencode Zen (free)",
+      "options": {
+        "baseURL": "https://opencode.ai/zen/v1",
+        "apiKey": "<REDACTED>"
+      },
+      "models": {
+        "big-pickle": {
+          "name": "Big Pickle (free, reasoning)"
+        },
+        "qwen3.6-plus-free": {
+          "name": "Qwen3.6 Plus (free)"
+        },
+        "kimi-k2.5-free": {
+          "name": "Kimi K2.5 (free)"
+        }
+      }
+    }
+  },
+  "mcp": {
+    "@upstash/context7-mcp": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@upstash/context7-mcp",
+        "--api-key",
+        "<REDACTED>"
+      ]
+    },
+    "browserbase": {
+      "type": "remote",
+      "url": "https://mcp.browserbase.com/mcp"
+    },
+    "jetbrains": {
+      "type": "remote",
+      "url": "http://localhost:64342/sse",
+      "enabled": true,
+      "timeout": 30000
+    },
+    "codegraph": {
+      "type": "local",
+      "command": [
+        "codegraph",
+        "serve",
+        "--mcp"
+      ],
+      "enabled": true
+    }
+  },
+  "permission": {
+    "skill": {
+      "code-*": "allow",
+      "karpathy-*": "allow",
+      "engineering-*": "allow",
+      "senior-*": "allow",
+      "docker-*": "allow",
+      "tdd-*": "allow",
+      "dependency-*": "allow",
+      "performance-*": "allow",
+      "security-*": "allow",
+      "agent-*": "allow",
+      "understand-*": "allow",
+      "mcp-*": "allow",
+      "llm-*": "allow",
+      "ci-cd-*": "allow",
+      "git-*": "allow",
+      "database-*": "allow",
+      "sql-*": "allow",
+      "prompt-*": "allow",
+      "tech-*": "allow",
+      "rag-*": "allow",
+      "coverage": "allow",
+      "behuman": "allow",
+      "frontend-design": "allow",
+      "browser-automation": "allow",
+      "*": "deny"
+    },
+    "*": "ask",
+    "bash": {
+      "*": "ask"
+    },
+    "edit": "ask"
+  },
+  "plugin": [
+    "opencode-power-pack@git+https://github.com/waybarrios/opencode-power-pack.git",
+    "opencode-btw@git+https://github.com/dalekirkwood/opencode-btw.git",
+    "./plugin/notify.js",
+    "./plugin/context-guard.js",
+    "./plugin/bash-guard.js",
+    "./plugin/agent-mode-override.js",
+    "./plugin/orchestrator-no-edit.js",
+    "./plugin/plan-no-jetbrains-write.js",
+    "./plugin/tool-loop-guard.js",
+    "./plugin/llama-swap-gpu.js",
+    "./plugin/goal.js"
+  ],
+  "agent": {
+    "build": {
+      "mode": "subagent",
+      "hidden": true,
+      "permission": {
+        "bash": {
+          "*": "ask"
+        },
+        "edit": "ask",
+        "mcp": "allow"
+      }
+    },
+    "plan": {
+      "mode": "primary",
+      "model": "llamaswap/qwen3-coder-large",
+      "permission": {
+        "edit": "deny",
+        "write": "deny",
+        "task": "deny",
+        "todowrite": "deny",
+        "bash": { "*": "ask" },
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "webfetch": "allow",
+        "mcp": "allow"
+      }
+    },
+    "orchestrator": {
+      "mode": "primary",
+      "model": "llamaswap/qwen3-coder-large",
+      "permission": {
+        "edit": "deny",
+        "write": "deny",
+        "bash": "deny",
+        "task": "allow",
+        "question": "allow",
+        "todowrite": "deny",
+        "read": "deny",
+        "glob": "deny",
+        "grep": "deny",
+        "list": "deny",
+        "webfetch": "deny",
+        "skill": "deny",
+        "mcp": "deny",
+        "external_directory": "deny"
+      }
+    },
+    "dotfiles-dev": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-coder-mid-q6",
+      "permission": {
+        "edit": "ask",
+        "bash": {
+          "*": "ask"
+        },
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "external_directory": "allow"
+      }
+    },
+    "system-admin": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-coder-mid-q6",
+      "permission": {
+        "edit": "ask",
+        "bash": {
+          "*": "ask"
+        },
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "external_directory": "allow"
+      }
+    },
+    "code-reviewer": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-coder-large",
+      "permission": {
+        "edit": "ask",
+        "bash": {
+          "*": "ask"
+        },
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "task": "allow",
+        "mcp": "allow",
+        "external_directory": "allow"
+      }
+    },
+    "expert-java-reviewer": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-coder-mid-q6",
+      "permission": {
+        "edit": "ask",
+        "bash": {
+          "*": "ask"
+        },
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "external_directory": "allow"
+      },
+      "prompt": "You are an expert Java code reviewer specialising in complexity, design, and correctness. You are only invoked for files, classes, or methods that have already been flagged as complex by the code-reviewer agent. Perform a deep review covering: algorithmic complexity (time/space), design patterns (correct or missing use), SOLID violations, concurrency hazards (race conditions, improper synchronisation, deadlock potential), error-handling gaps (swallowed exceptions, missing finally/try-with-resources), JVM-specific behaviour (autoboxing pitfalls, finalizer misuse, classloader leaks), and non-obvious edge cases. For each finding state: location (file + method), severity (critical/major/minor), a concrete explanation of the risk, and a specific fix. Do not repeat surface-level issues already catchable by a linter — focus only on what requires deep understanding of the code semantics. To keep context short, always prefer targeted tools: codegraph MCP tools for symbol/caller lookup, `rg` over grep, `fd` over find. Read only the specific lines you need."
+    },
+    "obsidian-helper": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "opencode/big-pickle",
+      "permission": {
+        "edit": "ask",
+        "bash": {
+          "*": "ask"
+        },
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "external_directory": "allow"
+      }
+    },
+    "java-hard-solver": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-moe",
+      "prompt": "You are a deep Java problem solver. You are called exclusively for hard, well-scoped problems that have already stumped the primary developer agent. You receive a precise brief containing: the exact method or class under scrutiny, the invariant or contract being violated, all relevant interfaces and type signatures, and a clear description of the failure mode or design conflict. You do not navigate the codebase — everything you need is in the brief. Your job is to reason deeply: identify the root cause, consider algorithmic and design alternatives, reason about JVM behaviour (memory model, happens-before, autoboxing, type erasure, classloader), and produce a concrete, correct solution with a short explanation of why it works. If the brief is missing critical information, state exactly what is needed rather than guessing. Be concise — no preamble, no restating the problem.",
+      "permission": {
+        "edit": "ask",
+        "bash": {
+          "*": "ask"
+        },
+        "read": "deny",
+        "glob": "deny",
+        "grep": "deny",
+        "mcp": "allow"
+      }
+    },
+    "java-expert-dev": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-coder-mid-q6",
+      "prompt": "You are an expert Java developer. You implement features, fix bugs, refactor code, and navigate the codebase using available tools. Apply Java best practices: correct use of generics, concurrency primitives, exception handling, and resource management. Prefer targeted tools: codegraph MCP for symbol lookup, `rg` over grep, `fd` over find — read only the lines you need. When you hit a problem that is genuinely hard — a subtle concurrency hazard, a deep algorithmic issue, a tricky JVM behaviour, or a design conflict with no obvious resolution — do not guess. Instead, delegate to the `java-hard-solver` agent with a precise brief that includes: (1) the exact method or class, (2) the invariant or contract being violated, (3) all relevant interfaces and type signatures copied verbatim, and (4) a clear one-paragraph description of the failure mode. Apply the solution it returns, then continue. If the task requires reading many large files simultaneously or the context will clearly exceed 32k tokens (large refactors spanning many classes, full-module migrations, analysis of many files at once), delegate to `java-expert-dev-large-context` instead.",
+      "permission": {
+        "edit": "ask",
+        "bash": {
+          "*": "ask"
+        },
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "webfetch": "allow",
+        "mcp": "allow",
+        "external_directory": "allow"
+      }
+    },
+    "general-dev": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwopus-coder-large-q6",
+      "permission": {
+        "edit": "ask",
+        "bash": {
+          "*": "ask"
+        },
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "webfetch": "allow",
+        "mcp": "allow",
+        "external_directory": "allow"
+      }
+    },
+    "webdev-dev": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-coder-mid-q6",
+      "prompt": "You are a frontend implementation specialist covering React, Next.js (App Router and Pages Router), TypeScript, CSS, and Tailwind CSS. You receive delegated tasks from the orchestrator and carry them out: building components, implementing hooks, handling routing and server/client component boundaries, writing responsive Tailwind layouts, and managing CSS modules or global styles. Apply React best practices — composition over inheritance, correct use of useEffect dependencies, memoisation only where it demonstrably helps. For Next.js: prefer server components by default, use 'use client' only when necessary, handle metadata, loading, and error boundaries correctly. Run the dev server or build to verify there are no compile errors before reporting done. To keep context short, always prefer targeted tools: codegraph MCP tools for symbol/caller lookup, `graphify query` if graphify-out/graph.json exists, `rg` over grep, `fd` over find. Read only the specific lines you need.",
+      "permission": {
+        "edit": "ask",
+        "bash": {
+          "*": "ask"
+        },
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "webfetch": "allow",
+        "mcp": "allow",
+        "external_directory": "allow"
+      }
+    },
+    "writer": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-moe",
+      "prompt": "You are a technical writing specialist. You write and edit prose: README files, documentation, changelogs, commit messages, docstrings, inline comments, API descriptions, and any other written content. Adapt tone and detail level to the audience — terse for commit messages, thorough for README and API docs. For docstrings and comments, explain the why, not the what. Read existing files for style and context before writing so your output fits the surrounding material. Use `rg` or `fd` to find relevant examples in the codebase rather than reading files wholesale.",
+      "permission": {
+        "edit": "ask",
+        "bash": {
+          "*": "ask"
+        },
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "mcp": "allow",
+        "external_directory": "allow"
+      }
+    },
+    "test-dev": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-coder-mid-q6",
+      "prompt": "You are a testing specialist. You receive delegated tasks from the orchestrator and write or fix tests across any language or framework (Jest, Vitest, JUnit, Playwright, Cypress, pytest, etc.). Follow arrange-act-assert structure. Mock at the right boundary — prefer real implementations over mocks unless I/O or non-determinism is involved. Aim for tests that document behaviour, not implementation details. For integration and e2e tests, prefer testing user-visible outcomes. Always run the test suite after writing tests and report pass/fail counts and any remaining failures. To keep context short, always prefer targeted tools: codegraph MCP tools for symbol/caller lookup, `graphify query` if graphify-out/graph.json exists, `rg` over grep, `fd` over find. Read only the specific lines you need.",
+      "permission": {
+        "edit": "ask",
+        "bash": {
+          "*": "ask"
+        },
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "webfetch": "allow",
+        "mcp": "allow",
+        "external_directory": "allow"
+      }
+    },
+    "java-expert-dev-large-context": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-coder-large",
+      "prompt": "You are an expert Java developer operating in large-context mode (up to 145k tokens). You are called when the task requires reading many large files simultaneously, spanning a full-module migration, or any refactor where context clearly exceeds 32k tokens. Otherwise your behaviour is identical to java-expert-dev: implement features, fix bugs, refactor code, and navigate the codebase using available tools. Apply Java best practices: correct use of generics, concurrency primitives, exception handling, and resource management. Prefer targeted tools: codegraph MCP for symbol lookup, `rg` over grep, `fd` over find — read only the lines you need. When you hit a genuinely hard problem, delegate to `java-hard-solver` with a precise brief.",
+      "permission": {
+        "edit": "ask",
+        "bash": {
+          "*": "ask"
+        },
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "webfetch": "allow",
+        "mcp": "allow",
+        "external_directory": "allow"
+      }
+    },
+    "vision": {
+      "mode": "subagent",
+      "hidden": true
+    }
+  }
+}

@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Stop llama-swap router/backend and free all VRAM.
+
+SWAP_PIDFILE="${XDG_RUNTIME_DIR:-/tmp}/llama-swap.pid"
+ROUTER_PIDFILE="${XDG_RUNTIME_DIR:-/tmp}/llama-swap-router.pid"
+
+stop_pidfile() {
+  local name="$1"
+  local pidfile="$2"
+
+  if [[ -f "${pidfile}" ]]; then
+    local pid
+    pid="$(cat "${pidfile}")"
+    if kill -0 "${pid}" 2>/dev/null; then
+      kill "${pid}"
+      rm -f "${pidfile}"
+      echo "${name} stopped (PID ${pid})."
+    else
+      rm -f "${pidfile}"
+      echo "${name} was not running (stale PID file removed)."
+    fi
+  else
+    echo "${name} is not running."
+  fi
+}
+
+# Reset Nvidia clock lock (restore boost behaviour).
+reset_nvidia_settings() {
+  if nvidia-smi -L &>/dev/null; then
+    sudo nvidia-smi -rgc &>/dev/null && echo "Nvidia clock lock removed."
+  fi
+}
+
+stop_pidfile "llama-swap router" "${ROUTER_PIDFILE}"
+stop_pidfile "llama-swap backend" "${SWAP_PIDFILE}"
+
+# Fallback for missing PID files.
+pkill -f "/.config/llama-swap/router.py" 2>/dev/null && echo "stale llama-swap router process stopped."
+pkill -x llama-swap 2>/dev/null && echo "stale llama-swap backend process stopped."
+
+reset_nvidia_settings

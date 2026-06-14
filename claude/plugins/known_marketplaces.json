@@ -1,0 +1,26 @@
+{
+  "claude-plugins-official": {
+    "source": {
+      "source": "github",
+      "repo": "anthropics/claude-plugins-official"
+    },
+    "installLocation": "/home/marinus/.claude/plugins/marketplaces/claude-plugins-official",
+    "lastUpdated": "2026-06-14T22:32:04.542Z"
+  },
+  "claude-code-skills": {
+    "source": {
+      "source": "github",
+      "repo": "alirezarezvani/claude-skills"
+    },
+    "installLocation": "/home/marinus/.claude/plugins/marketplaces/claude-code-skills",
+    "lastUpdated": "2026-05-03T15:26:26.049Z"
+  },
+  "understand-anything": {
+    "source": {
+      "source": "github",
+      "repo": "Lum1104/Understand-Anything"
+    },
+    "installLocation": "/home/marinus/.claude/plugins/marketplaces/understand-anything",
+    "lastUpdated": "2026-05-29T23:50:19.875Z"
+  }
+}

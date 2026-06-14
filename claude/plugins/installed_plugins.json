@@ -1,0 +1,114 @@
+{
+  "version": 2,
+  "plugins": {
+    "frontend-design@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/marinus/.claude/plugins/cache/claude-plugins-official/frontend-design/unknown",
+        "version": "unknown",
+        "installedAt": "2026-05-03T15:26:17.548Z",
+        "lastUpdated": "2026-05-03T15:26:17.548Z"
+      }
+    ],
+    "engineering-skills@claude-code-skills": [
+      {
+        "scope": "user",
+        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/engineering-skills/2.2.3",
+        "version": "2.2.3",
+        "installedAt": "2026-05-03T15:26:30.282Z",
+        "lastUpdated": "2026-05-03T15:26:30.282Z",
+        "gitCommitSha": "7d493fed97e4d57553630e1a2432c1c02bf5b2b3"
+      }
+    ],
+    "engineering-advanced-skills@claude-code-skills": [
+      {
+        "scope": "user",
+        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/engineering-advanced-skills/2.3.3",
+        "version": "2.3.3",
+        "installedAt": "2026-05-03T15:26:35.418Z",
+        "lastUpdated": "2026-05-03T15:26:35.418Z",
+        "gitCommitSha": "7d493fed97e4d57553630e1a2432c1c02bf5b2b3"
+      }
+    ],
+    "product-skills@claude-code-skills": [
+      {
+        "scope": "user",
+        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/product-skills/2.3.3",
+        "version": "2.3.3",
+        "installedAt": "2026-05-03T15:26:41.555Z",
+        "lastUpdated": "2026-05-03T15:26:41.555Z",
+        "gitCommitSha": "7d493fed97e4d57553630e1a2432c1c02bf5b2b3"
+      }
+    ],
+    "marketing-skills@claude-code-skills": [
+      {
+        "scope": "user",
+        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/marketing-skills/2.2.3",
+        "version": "2.2.3",
+        "installedAt": "2026-05-03T15:26:45.387Z",
+        "lastUpdated": "2026-05-03T15:26:45.387Z",
+        "gitCommitSha": "7d493fed97e4d57553630e1a2432c1c02bf5b2b3"
+      }
+    ],
+    "ra-qm-skills@claude-code-skills": [
+      {
+        "scope": "user",
+        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/ra-qm-skills/2.2.3",
+        "version": "2.2.3",
+        "installedAt": "2026-05-03T15:26:49.792Z",
+        "lastUpdated": "2026-05-03T15:26:49.792Z",
+        "gitCommitSha": "7d493fed97e4d57553630e1a2432c1c02bf5b2b3"
+      }
+    ],
+    "pm-skills@claude-code-skills": [
+      {
+        "scope": "user",
+        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/pm-skills/2.2.3",
+        "version": "2.2.3",
+        "installedAt": "2026-05-03T15:26:53.261Z",
+        "lastUpdated": "2026-05-03T15:26:53.261Z",
+        "gitCommitSha": "7d493fed97e4d57553630e1a2432c1c02bf5b2b3"
+      }
+    ],
+    "c-level-skills@claude-code-skills": [
+      {
+        "scope": "user",
+        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/c-level-skills/2.2.3",
+        "version": "2.2.3",
+        "installedAt": "2026-05-03T15:26:58.158Z",
+        "lastUpdated": "2026-05-03T15:26:58.158Z",
+        "gitCommitSha": "7d493fed97e4d57553630e1a2432c1c02bf5b2b3"
+      }
+    ],
+    "business-growth-skills@claude-code-skills": [
+      {
+        "scope": "user",
+        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/business-growth-skills/2.2.3",
+        "version": "2.2.3",
+        "installedAt": "2026-05-03T15:27:02.339Z",
+        "lastUpdated": "2026-05-03T15:27:02.339Z",
+        "gitCommitSha": "7d493fed97e4d57553630e1a2432c1c02bf5b2b3"
+      }
+    ],
+    "finance-skills@claude-code-skills": [
+      {
+        "scope": "user",
+        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/finance-skills/2.2.3",
+        "version": "2.2.3",
+        "installedAt": "2026-05-03T15:27:29.437Z",
+        "lastUpdated": "2026-05-03T15:27:29.437Z",
+        "gitCommitSha": "7d493fed97e4d57553630e1a2432c1c02bf5b2b3"
+      }
+    ],
+    "understand-anything@understand-anything": [
+      {
+        "scope": "user",
+        "installPath": "/home/marinus/.claude/plugins/cache/understand-anything/understand-anything/2.7.5",
+        "version": "2.7.5",
+        "installedAt": "2026-05-29T23:50:26.720Z",
+        "lastUpdated": "2026-05-29T23:50:26.720Z",
+        "gitCommitSha": "26edf61856fa476e466bda1814819a266a293c47"
+      }
+    ]
+  }
+}

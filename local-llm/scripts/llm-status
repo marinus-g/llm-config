@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Show llama-swap state and GPU headroom.
+
+echo "== GPU =="
+nvidia-smi --query-gpu=name,memory.used,memory.free,utilization.gpu \
+  --format=csv,noheader 2>/dev/null || echo "(nvidia-smi unavailable)"
+
+echo ""
+echo "== Running models =="
+curl -sf -H "Authorization: Bearer ${LLAMA_API_KEY:-llama-local}" \
+  http://127.0.0.1:5099/running \
+  | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+models = data.get('running', [])
+if not models:
+    print('  (none)')
+for m in models:
+    print(f'  {m[\"model\"]:25s}  {m[\"state\"]:8s}  {m[\"name\"]}')
+" 2>/dev/null || echo "  (llama-swap not responding on :5099)"

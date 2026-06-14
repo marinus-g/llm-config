@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+# Start llama-swap behind a local router.
+# opencode keeps using 127.0.0.1:5099; llama-swap itself listens on 5100.
+
+SWAP_PIDFILE="${XDG_RUNTIME_DIR:-/tmp}/llama-swap.pid"
+ROUTER_PIDFILE="${XDG_RUNTIME_DIR:-/tmp}/llama-swap-router.pid"
+LOGFILE="${HOME}/.cache/llama-swap.log"
+ROUTER_LOGFILE="${HOME}/.cache/llama-swap-router.log"
+CONFIG="${HOME}/.config/llama-swap/config.yaml"
+BIN="${HOME}/.local/bin/llama-swap"
+ROUTER="${HOME}/.config/llama-swap/router.py"
+CLIENT_LISTEN="127.0.0.1:5099"
+BACKEND_LISTEN="127.0.0.1:5100"
+
+# Secrets - set LLAMA_API_KEY in your shell env or ~/.profile.
+# Must match opencode.json provider.llamaswap.options.apiKey.
+export LLAMA_API_KEY="${LLAMA_API_KEY:-llama-local}"
+
+# Nvidia tuning - override via env vars before calling llm-start:
+#   POWER_LIMIT=500 GPU_CLOCK_MIN=1000 GPU_CLOCK_MAX=2000 llm-start
+POWER_LIMIT="${POWER_LIMIT:-400}"
+GPU_CLOCK_MIN="${GPU_CLOCK_MIN:-900}"
+GPU_CLOCK_MAX="${GPU_CLOCK_MAX:-1750}"
+
+is_running() {
+  [[ -f "$1" ]] && kill -0 "$(cat "$1")" 2>/dev/null
+}
+
+apply_nvidia_settings() {
+  if ! nvidia-smi -L &>/dev/null; then
+    echo "Warning: nvidia-smi unavailable, skipping GPU tuning." >&2
+    return
+  fi
+  echo "Applying Nvidia settings (${POWER_LIMIT}W, ${GPU_CLOCK_MIN}-${GPU_CLOCK_MAX} MHz)..."
+  sudo nvidia-smi -pl "${POWER_LIMIT}" || echo "Warning: failed to set power limit." >&2
+  sudo nvidia-smi -lgc "${GPU_CLOCK_MIN},${GPU_CLOCK_MAX}" || echo "Warning: failed to set GPU clocks." >&2
+}
+
+wait_for_backend() {
+  for _ in {1..50}; do
+    if backend_ready; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  return 1
+}
+
+backend_ready() {
+  curl -sf --max-time 1 \
+    -H "Authorization: Bearer ${LLAMA_API_KEY}" \
+    "http://${BACKEND_LISTEN}/running" >/dev/null
+}
+
+apply_nvidia_settings
+
+# Stop any directly-launched llama-server (old setup) to free model resources.
+if pgrep -x llama-server &>/dev/null; then
+  echo "Stopping existing llama-server..."
+  pkill -x llama-server
+  sleep 1
+fi
+
+mkdir -p "$(dirname "${LOGFILE}")"
+
+if is_running "${SWAP_PIDFILE}"; then
+  if backend_ready; then
+    echo "llama-swap backend already running (PID $(cat "${SWAP_PIDFILE}")), listening on ${BACKEND_LISTEN}"
+  else
+    OLD_PID="$(cat "${SWAP_PIDFILE}")"
+    echo "Stopping llama-swap from old/wrong listen address (PID ${OLD_PID})..."
+    kill "${OLD_PID}" 2>/dev/null || true
+    rm -f "${SWAP_PIDFILE}"
+    sleep 1
+    nohup "${BIN}" --config "${CONFIG}" --listen "${BACKEND_LISTEN}" \
+      > "${LOGFILE}" 2>&1 &
+    echo $! > "${SWAP_PIDFILE}"
+    echo "llama-swap backend started (PID $!) on ${BACKEND_LISTEN}"
+  fi
+else
+  rm -f "${SWAP_PIDFILE}"
+  nohup "${BIN}" --config "${CONFIG}" --listen "${BACKEND_LISTEN}" \
+    > "${LOGFILE}" 2>&1 &
+  echo $! > "${SWAP_PIDFILE}"
+  echo "llama-swap backend started (PID $!) on ${BACKEND_LISTEN}"
+fi
+
+if ! wait_for_backend; then
+  echo "Error: llama-swap backend did not become ready on ${BACKEND_LISTEN}." >&2
+  echo "Log: ${LOGFILE}" >&2
+  exit 1
+fi
+
+if is_running "${ROUTER_PIDFILE}"; then
+  echo "llama-swap router already running (PID $(cat "${ROUTER_PIDFILE}")), listening on ${CLIENT_LISTEN}"
+else
+  rm -f "${ROUTER_PIDFILE}"
+  setsid -f python3 "${ROUTER}" \
+    --listen "${CLIENT_LISTEN}" \
+    --backend "http://${BACKEND_LISTEN}" \
+    --api-key "${LLAMA_API_KEY}" \
+    > "${ROUTER_LOGFILE}" 2>&1 &
+  echo $! > "${ROUTER_PIDFILE}"
+  echo "llama-swap router started (PID $!) on ${CLIENT_LISTEN}"
+fi
+
+echo "Logs: ${LOGFILE}, ${ROUTER_LOGFILE}"
+echo "Models load on first request; run llm-stop to shut down."

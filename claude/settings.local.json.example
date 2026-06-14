@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:wiki.hypr.land)",
+      "WebFetch(domain:hypr.land)",
+      "mcp__context7__query-docs",
+      "Bash(curl *)"
+    ]
+  }
+}

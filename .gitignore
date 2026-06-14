@@ -1,0 +1,8 @@
+node_modules/
+__pycache__/
+*.pyc
+.git/
+.cache/
+*.bak*
+*.log
+*.pid

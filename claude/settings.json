@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__codegraph__codegraph_search",
+      "mcp__codegraph__codegraph_context",
+      "mcp__codegraph__codegraph_callers",
+      "mcp__codegraph__codegraph_callees",
+      "mcp__codegraph__codegraph_impact",
+      "mcp__codegraph__codegraph_node",
+      "mcp__codegraph__codegraph_status"
+    ]
+  },
+  "model": "opusplan",
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh",
+    "refreshInterval": 60
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "engineering-skills@claude-code-skills": true,
+    "engineering-advanced-skills@claude-code-skills": true,
+    "product-skills@claude-code-skills": true,
+    "marketing-skills@claude-code-skills": true,
+    "ra-qm-skills@claude-code-skills": true,
+    "pm-skills@claude-code-skills": true,
+    "c-level-skills@claude-code-skills": true,
+    "business-growth-skills@claude-code-skills": true,
+    "finance-skills@claude-code-skills": true,
+    "understand-anything@understand-anything": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-code-skills": {
+      "source": {
+        "source": "github",
+        "repo": "alirezarezvani/claude-skills"
+      }
+    },
+    "understand-anything": {
+      "source": {
+        "source": "github",
+        "repo": "Lum1104/Understand-Anything"
+      }
+    }
+  },
+  "effortLevel": "medium",
+  "theme": "dark",
+  "agentPushNotifEnabled": true
+}

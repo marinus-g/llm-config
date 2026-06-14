@@ -1,0 +1,567 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/mostlygeek/llama-swap/refs/heads/main/config-schema.json
+#
+# llama-swap config — RTX 5090 (32 GB VRAM)
+# Manages on-demand model loading so VRAM is shared across multiple models.
+# opencode and any OpenAI-compatible client hit router port 5099; llama-swap backend listens on 5100.
+
+healthCheckTimeout: 300
+logLevel: info
+logToStdout: both
+
+# Global TTL: unload after 10 min idle (override per model)
+ttl: 600
+
+# LLAMA_API_KEY must be set in your shell env (or ~/.zprofile / ~/.profile).
+# Must match opencode.json provider.llamaswap.options.apiKey ("llama-local").
+# Example: export LLAMA_API_KEY=llama-local
+
+macros:
+  llama: /home/marinus/work/llm/llama.cpp/build/bin/llama-server
+  models: /home/marinus/.lmstudio/models/lmstudio-community
+
+models:
+  # ─────────────────────────────────────────────────────────────
+  # Primary coder — Qwen3.6 27B Q4_K_M
+  # Single 65536-token slot. This avoids llama.cpp splitting context across
+  # parallel slots and gives opencode compaction/subagents a real 64k window.
+  # Draft speculation is disabled: the older Qwen3 1.7B draft vocab is not
+  # compatible with Qwen3.6 GGUF targets in llama.cpp.
+  # ─────────────────────────────────────────────────────────────
+  "qwen3-coder":
+    name: "Qwen3.6 27B (coder)"
+    description: "Main coding model — 65536 ctx, single slot, KV q8"
+    ttl: 600  # unload after 10 min idle
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q4_K_M.gguf
+      -ngl 80
+      -c 65536
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --reasoning off
+      --no-warmup
+      --defrag-thold 0.1
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Primary coder quality test — Qwen3.6 27B Q6_K
+  # Higher-quality quant than Q4_K_M. Fits should be checked on the 5090 with
+  # the same 65536-token slot before promoting it.
+  # ─────────────────────────────────────────────────────────────
+  "qwen3-coder-q6":
+    name: "Qwen3.6 27B Q6 (coder)"
+    description: "Q6_K quality test — 65536 ctx, single slot, KV q8"
+    ttl: 600
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q6_K.gguf
+      -ngl 80
+      -c 65536
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --reasoning off
+      --no-warmup
+      --defrag-thold 0.1
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Middle-context coder — same 27B, one 98304-token slot.
+  # Use when a delegated opencode agent needs more room than the default
+  # coder profile but the full large-context profile is overkill.
+  # ─────────────────────────────────────────────────────────────
+  "qwen3-coder-mid":
+    name: "Qwen3.6 27B (mid context)"
+    description: "98304 ctx, single slot — larger delegated coder"
+    ttl: 600
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q4_K_M.gguf
+      -ngl 80
+      -c 98304
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --reasoning off
+      --no-warmup
+      --defrag-thold 0.1
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Middle-context coder quality test — Qwen3.6 27B Q6_K
+  # This is the profile to try for OpenCode subagents before changing
+  # small_model or agent defaults.
+  # ─────────────────────────────────────────────────────────────
+  "qwen3-coder-mid-q6":
+    name: "Qwen3.6 27B Q6 (mid context)"
+    description: "Q6_K quality test — 98304 ctx, single slot, KV q8"
+    ttl: 600
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q6_K.gguf
+      -ngl 80
+      -c 98304
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --reasoning off
+      --no-warmup
+      --defrag-thold 0.1
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Large-context coder — same 27B, 196608 ctx, NO speculative decoding.
+  # Use for long review sessions or large codebase analysis where
+  # compaction is worse than slightly slower tokens/sec.
+  # ─────────────────────────────────────────────────────────────
+  "qwen3-coder-large":
+    name: "Qwen3.6 27B (large context)"
+    description: "196608 ctx, single slot, no speculative decoding — less compaction for long sessions"
+    ttl: 600
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q4_K_M.gguf
+      -ngl 80
+      -c 196608
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --reasoning off
+      --no-warmup
+      --defrag-thold 0.1
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Vision model — same 27B weights + multimodal projector
+  # Enables image understanding (screenshots, diagrams, photos).
+  # Shares weights file with qwen3-coder; llama-swap unloads coder
+  # first since both need ~17-18 GB.
+  # Context trimmed to 49152 to leave room for mmproj overhead.
+  # ─────────────────────────────────────────────────────────────
+  "qwen3-vl":
+    name: "Qwen3.6 27B VL (vision)"
+    description: "27B with multimodal projector — images + text"
+    ttl: 300  # unload after 5 min idle (less frequently used)
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q4_K_M.gguf
+      --mmproj ${models}/Qwen3.6-27B-GGUF/mmproj-Qwen3.6-27B-BF16.gguf
+      -ngl 80
+      -c 49152
+      -n 8192
+      -b 512
+      -ub 512
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # MoE reasoning model — Qwen3.6 35B-A3B (Mixture of Experts)
+  # 35B total params, only ~3B active per token → fast inference,
+  # large capacity. Good for hard reasoning, long refactors.
+  # 20 GB model — loads alone, unloads coder. On-demand only.
+  # ─────────────────────────────────────────────────────────────
+  "qwen3-moe":
+    name: "Qwen3.6 35B MoE (reasoning)"
+    description: "35B MoE, 3B active — fast + strong reasoning"
+    ttl: 300  # unload after 5 min idle
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-35B-A3B-GGUF/Qwen3.6-35B-A3B-Q4_K_M.gguf
+      -ngl 80
+      -c 65536
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # MoE large-context — same 35B MoE weights, 131072 ctx.
+  # Use for long orchestrator sessions to avoid compaction loops.
+  # No draft model here: the 131072 ctx KV cache plus draft KV cache OOMs.
+  # ─────────────────────────────────────────────────────────────
+  "qwen3-moe-large":
+    name: "Qwen3.6 35B MoE (large context)"
+    description: "131072 ctx — for long orchestrator sessions, no speculative decoding"
+    ttl: 300
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-35B-A3B-GGUF/Qwen3.6-35B-A3B-Q4_K_M.gguf
+      -ngl 80
+      -c 131072
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # MoE vision — 35B MoE with mmproj (strongest vision option)
+  # ─────────────────────────────────────────────────────────────
+  "qwen3-moe-vl":
+    name: "Qwen3.6 35B MoE VL (vision, strong)"
+    description: "35B MoE + multimodal projector — best vision quality"
+    ttl: 180
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-35B-A3B-GGUF/Qwen3.6-35B-A3B-Q4_K_M.gguf
+      --mmproj ${models}/Qwen3.6-35B-A3B-GGUF/mmproj-Qwen3.6-35B-A3B-BF16.gguf
+      -ngl 80
+      -c 32768
+      -n 8192
+      -b 512
+      -ub 512
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Experimental planning/coder model — Qwopus3.6 27B Coder MTP Q6_K
+  # Fine-tuned no-thinking agent/coder variant. Keep focused at 65536 ctx first
+  # to leave VRAM and connector/power headroom on the RTX 5090.
+  # ─────────────────────────────────────────────────────────────
+  "qwopus-coder-q6":
+    name: "Qwopus3.6 27B Coder MTP Q6 (focused)"
+    description: "Experimental Qwopus Q6_K — focused planning/coding, 65536 ctx"
+    ttl: 300
+    filters:
+      setParamsByID:
+        "qwopus-coder-q6:low":
+          chat_template_kwargs:
+            reasoning_effort: low
+        "qwopus-coder-q6:medium":
+          chat_template_kwargs:
+            reasoning_effort: medium
+        "qwopus-coder-q6:high":
+          chat_template_kwargs:
+            reasoning_effort: high
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m /home/marinus/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -ngl 80
+      -c 65536
+      -np 1
+      -n 8192
+      -b 2048
+      -ub 512
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --reasoning off
+      --no-warmup
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Experimental planning/coder model — Qwopus3.6 27B Coder MTP Q6_K
+  # Mid-context variant for OpenCode plan agent. Keeps the focused 64k profile
+  # available while giving plan enough room for the large skill/tool catalog.
+  # ─────────────────────────────────────────────────────────────
+  "qwopus-coder-mid-q6":
+    name: "Qwopus3.6 27B Coder MTP Q6 (mid context)"
+    description: "Experimental Qwopus Q6_K — planning/coding, 98304 ctx"
+    ttl: 300
+    filters:
+      setParamsByID:
+        "qwopus-coder-mid-q6:low":
+          chat_template_kwargs:
+            reasoning_effort: low
+        "qwopus-coder-mid-q6:medium":
+          chat_template_kwargs:
+            reasoning_effort: medium
+        "qwopus-coder-mid-q6:high":
+          chat_template_kwargs:
+            reasoning_effort: high
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m /home/marinus/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -ngl 80
+      -c 98304
+      -np 1
+      -n 8192
+      -b 2048
+      -ub 512
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --reasoning off
+      --no-warmup
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Large-context planning/coder — Qwopus3.6 27B Coder MTP Q6_K
+  # 196608 ctx, NO speculative decoding (draft KV cache OOMs at this size).
+  # Use for long plan sessions where compaction is worse than slower tokens/sec.
+  # ─────────────────────────────────────────────────────────────
+  "qwopus-coder-large-q6":
+    name: "Qwopus3.6 27B Coder MTP Q6 (large context)"
+    description: "Experimental Qwopus Q6_K — planning/coding, 196608 ctx"
+    ttl: 300
+    filters:
+      setParamsByID:
+        "qwopus-coder-large-q6:low":
+          chat_template_kwargs:
+            reasoning_effort: low
+        "qwopus-coder-large-q6:medium":
+          chat_template_kwargs:
+            reasoning_effort: medium
+        "qwopus-coder-large-q6:high":
+          chat_template_kwargs:
+            reasoning_effort: high
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m /home/marinus/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -ngl 80
+      -c 196608
+      -np 1
+      -n 8192
+      -b 2048
+      -ub 512
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --reasoning off
+      --no-warmup
+      --api-key ${env.LLAMA_API_KEY}
+
+  # =============================================================================
+  # CPU shadow variants — same weights, -ngl 0 (all layers on CPU/RAM).
+  # Used as secondary models when a GPU model is already loaded.
+  # Short TTL (120 s): once the router promotes back to GPU, these unload quickly.
+  # =============================================================================
+
+  "qwen3-coder-cpu":
+    name: "Qwen3 1.7B (coder CPU fallback)"
+    description: "Fast CPU shadow — small text fallback while GPU is occupied"
+    ttl: 120
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/qwen3-draft/Qwen3-1.7B-Q8_0.gguf
+      -ngl 0
+      -c 32768
+      -np 1
+      -n 8192
+      -b 512
+      -ub 256
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --jinja
+      --no-warmup
+      --api-key ${env.LLAMA_API_KEY}
+
+  "qwen3-coder-mid-cpu":
+    name: "Qwen3 1.7B mid ctx (CPU fallback)"
+    description: "Fast CPU shadow — mid-context text fallback while GPU is occupied"
+    ttl: 120
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/qwen3-draft/Qwen3-1.7B-Q8_0.gguf
+      -ngl 0
+      -c 65536
+      -np 1
+      -n 8192
+      -b 512
+      -ub 256
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --jinja
+      --no-warmup
+      --api-key ${env.LLAMA_API_KEY}
+
+  "qwen3-coder-large-cpu":
+    name: "Qwen3 1.7B large ctx (CPU fallback)"
+    description: "Fast CPU shadow — large-context text fallback while GPU is occupied"
+    ttl: 120
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/qwen3-draft/Qwen3-1.7B-Q8_0.gguf
+      -ngl 0
+      -c 145408
+      -np 1
+      -n 8192
+      -b 512
+      -ub 256
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --jinja
+      --no-warmup
+      --api-key ${env.LLAMA_API_KEY}
+
+  "qwen3-vl-cpu":
+    name: "Qwen3.6 27B VL (CPU)"
+    description: "CPU shadow — vision model while GPU is occupied"
+    ttl: 120
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q4_K_M.gguf
+      --mmproj ${models}/Qwen3.6-27B-GGUF/mmproj-Qwen3.6-27B-BF16.gguf
+      -ngl 0
+      -c 49152
+      -np 1
+      -n 8192
+      -b 512
+      -ub 256
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --jinja
+      --no-warmup
+      --api-key ${env.LLAMA_API_KEY}
+
+  "qwen3-moe-cpu":
+    name: "Qwen3 1.7B (MoE CPU fallback)"
+    description: "Fast CPU shadow — text fallback while GPU is occupied"
+    ttl: 120
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/qwen3-draft/Qwen3-1.7B-Q8_0.gguf
+      -ngl 0
+      -c 65536
+      -np 1
+      -n 8192
+      -b 512
+      -ub 256
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --jinja
+      --no-warmup
+      --api-key ${env.LLAMA_API_KEY}
+
+  "qwen3-moe-large-cpu":
+    name: "Qwen3 1.7B large ctx (MoE CPU fallback)"
+    description: "Fast CPU shadow — large-context text fallback while GPU is occupied"
+    ttl: 120
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/qwen3-draft/Qwen3-1.7B-Q8_0.gguf
+      -ngl 0
+      -c 131072
+      -np 1
+      -n 8192
+      -b 512
+      -ub 256
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --jinja
+      --no-warmup
+      --api-key ${env.LLAMA_API_KEY}
+
+  "qwen3-moe-vl-cpu":
+    name: "Qwen3.6 35B MoE VL (CPU)"
+    description: "CPU shadow — MoE vision while GPU is occupied"
+    ttl: 120
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-35B-A3B-GGUF/Qwen3.6-35B-A3B-Q4_K_M.gguf
+      --mmproj ${models}/Qwen3.6-35B-A3B-GGUF/mmproj-Qwen3.6-35B-A3B-BF16.gguf
+      -ngl 0
+      -c 32768
+      -np 1
+      -n 8192
+      -b 512
+      -ub 256
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --jinja
+      --no-warmup
+      --api-key ${env.LLAMA_API_KEY}
+
+# =============================================================================
+# matrix: concurrent model combinations
+# GPU models can coexist with CPU shadow models (one of each at a time).
+# Two GPU models or two CPU models cannot coexist.
+# Subset semantics: each pair is a valid set, so single models also run alone.
+# =============================================================================
+matrix:
+  prioritize_requested: true
+  vars:
+    # GPU models
+    c:   qwen3-coder
+    cm:  qwen3-coder-mid
+    cl:  qwen3-coder-large
+    v:   qwen3-vl
+    m:   qwen3-moe
+    ml:  qwen3-moe-large
+    mv:  qwen3-moe-vl
+    q:   qwopus-coder-q6
+    qm:  qwopus-coder-mid-q6
+    ql:  qwopus-coder-large-q6
+    # CPU shadow models
+    cc:  qwen3-coder-cpu
+    cmc: qwen3-coder-mid-cpu
+    clc: qwen3-coder-large-cpu
+    vc:  qwen3-vl-cpu
+    mc:  qwen3-moe-cpu
+    mlc: qwen3-moe-large-cpu
+    mvc: qwen3-moe-vl-cpu
+  sets:
+    # Any single Qwen GPU model may run alongside any single CPU shadow model.
+    # Qwopus profiles intentionally run alone so stale CPU shadows do not stay
+    # loaded while opencode swaps between Qwopus context sizes.
+    gpu_cpu: "(c | cm | cl | v | m | ml | mv) & (cc | cmc | clc | vc | mc | mlc | mvc)"
