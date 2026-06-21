@@ -22,6 +22,7 @@ permission:
   webfetch: deny
   skill: deny
   mcp: deny
+  see_image: allow
   external_directory: deny
 ---
 

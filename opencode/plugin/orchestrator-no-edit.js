@@ -42,7 +42,7 @@ const READONLY_AGENTS = ["orchestrator", "plan"];
 /** Pure-router orchestrator recovery tools + workflow tools the orchestrator
  *  is explicitly instructed to run directly in its own session. */
 const ORCHESTRATOR_ALLOWED_TOOLS = new Set([
-  "task", "question", "invalid",
+  "task", "question", "invalid", "see_image",
   "workflow_control", "workflow_verify", "workflow_commit", "workflow_handoff", "workflow_create",
 ]);
 

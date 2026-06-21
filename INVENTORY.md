@@ -24,6 +24,21 @@ Every copied file listed with source, destination, category, and secret risk.
 | **OpenCode** | `~/.config/opencode/commands/*.md` | `opencode/commands/*.md` | Low |
 | **OpenCode** | `~/.config/opencode/plugin/*.js` | `opencode/plugin/*.js` | Low |
 | **OpenCode** | `~/.config/opencode/skills/*/` (116 dirs) | `opencode/skills/` | Low |
+| **OpenCode** | `~/.config/opencode/skills/fix/flaky-taxonomy.md` | `opencode/skills/fix/flaky-taxonomy.md` | Low |
+| **OpenCode** | `~/.config/opencode/skills/generate/patterns.md` | `opencode/skills/generate/patterns.md` | Low |
+| **OpenCode** | `~/.config/opencode/skills/migrate/cypress-mapping.md` | `opencode/skills/migrate/cypress-mapping.md` | Low |
+| **OpenCode** | `~/.config/opencode/skills/migrate/selenium-mapping.md` | `opencode/skills/migrate/selenium-mapping.md` | Low |
+| **OpenCode** | `~/.config/opencode/skills/review/anti-patterns.md` | `opencode/skills/review/anti-patterns.md` | Low |
+| **OpenCode** | `~/.config/opencode/skills/graphify/.graphify_version` | `opencode/skills/graphify/.graphify_version` | Low |
+| **OpenCode** | `~/.config/opencode/skills/dependency-auditor/test-inventory.json` | `opencode/skills/dependency-auditor/test-inventory.json` | Low |
+| **OpenCode** | `~/.config/opencode/skills/dependency-auditor/test-project/` | `opencode/skills/dependency-auditor/test-project/` | Low |
+| **OpenCode** | `~/.config/opencode/skills/pw/reference/` | `opencode/skills/pw/reference/` | Low |
+| **OpenCode** | `~/.config/opencode/skills/pw/templates/` | `opencode/skills/pw/templates/` | Low |
+| **OpenCode** | `~/.config/opencode/skills/skill-tester/tests/` | `opencode/skills/skill-tester/tests/` | Low |
+| **OpenCode** | `~/.config/opencode/skills/understand/*.mjs` (8 files) | `opencode/skills/understand/*.mjs` | Low |
+| **OpenCode** | `~/.config/opencode/skills/understand/frameworks/` | `opencode/skills/understand/frameworks/` | Low |
+| **OpenCode** | `~/.config/opencode/skills/understand/languages/` | `opencode/skills/understand/languages/` | Low |
+| **OpenCode** | `~/.config/opencode/skills/understand/locales/` | `opencode/skills/understand/locales/` | Low |
 | **OpenCode** | `~/.config/opencode/agents/explore.md` | `opencode/agents/explore.md` | Low |
 | **OpenCode** | `~/.config/opencode/agents/step-orchestrator.md` | `opencode/agents/step-orchestrator.md` | Low |
 | **OpenCode** | `~/.config/opencode/agents/step-planner.md` | `opencode/agents/step-planner.md` | Low |
@@ -36,12 +51,14 @@ Every copied file listed with source, destination, category, and secret risk.
 | **OpenCode** | `~/.config/opencode/tui.json` | `opencode/tui.json` | Low |
 | **PI** | `~/.pi/jetbrains.json` | `pi/jetbrains.json` | Low |
 | **PI** | `~/.pi/agent/skills/pi-skills/browser-tools/SKILL.md` | `pi/skills/browser-tools/SKILL.md` | Low |
+| **PI** | `~/.pi/agent/skills/pi-skills/browser-tools/browser-*.js` (8 files) | `pi/skills/browser-tools/browser-*.js` | Low |
 | **PI** | `~/.pi/agent/skills/pi-skills/gccli/SKILL.md` | `pi/skills/gccli/SKILL.md` | Low |
 | **PI** | `~/.pi/agent/skills/pi-skills/gdcli/SKILL.md` | `pi/skills/gdcli/SKILL.md` | Low |
 | **PI** | `~/.pi/agent/skills/pi-skills/gmcli/SKILL.md` | `pi/skills/gmcli/SKILL.md` | Low |
 | **PI** | `~/.pi/agent/skills/pi-skills/transcribe/*` | `pi/skills/transcribe/` | Low |
 | **PI** | `~/.pi/agent/skills/pi-skills/vscode/SKILL.md` | `pi/skills/vscode/SKILL.md` | Low |
 | **PI** | `~/.pi/agent/skills/pi-skills/youtube-transcript/*` | `pi/skills/youtube-transcript/` | Low |
+| **AI Memory** | `~/Obsidian Vault/05 AI-memory/Context/opencode-setup-overview.md` | `ai-memory/Context/opencode-setup-overview.md` | Low |
 | **Local LLM** | `~/.config/llama-swap/config.yaml` (now includes fastcontext-4b, fastcontext-4b-cpu, gemma3-vl-cpu) | `local-llm/llama-swap/config.yaml` | **MEDIUM — contains model paths** |
 | **Local LLM** | `~/.config/llama-swap/config.yaml` (redacted) | `local-llm/llama-swap/config.yaml.example` | **MEDIUM — REDACTED** |
 | **Local LLM** | `~/.config/llama-swap/router.py` (has CPU fallback logic) | `local-llm/llama-swap/router.py` | Low |
@@ -60,5 +77,5 @@ Every copied file listed with source, destination, category, and secret risk.
 |---|---|
 | `claude/.credentials.json.example` | All string values (accessToken, refreshToken) → `<REDACTED>` |
 | `claude/settings.local.json.example` | Symlink target path reference |
-| `opencode/opencode.json.example` | `apiKey` values → `<REDACTED>` |
-| `local-llm/llama-swap/config.yaml.example` | Model file paths → `${MODELS_DIR}/...`, `llama-server` path → `${LLAMA_SERVER}` (also redacts fastcontext and gemma3 model paths) |
+| `opencode/opencode.json.example` | `apiKey` values → `<REDACTED>` (also redacts Context7 API key value `ctx7sk-...` → `<REDACTED>`) |
+| `local-llm/llama-swap/config.yaml.example` | Model file paths → `${MODELS_DIR}/...`, `llama-server` path → `${LLAMA_SERVER}` (also redacts fastcontext, gemma3, and new model entries: qwen3-base, gemma4-31b, keye-vl, gemma4-12b-coder) |

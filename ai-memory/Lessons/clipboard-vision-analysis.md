@@ -68,4 +68,4 @@ If you cannot see images, fall back to the clipboard. The most recently pasted i
 - Both at `/usr/bin/`
 
 ---
-tags: ai/memory/lesson/vision | source: user | modified: 2026-06-06
+tags: ai/memory/lesson/vision | source: marinus | modified: 2026-06-06

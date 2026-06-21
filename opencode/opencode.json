@@ -34,6 +34,13 @@
             "output": 8192
           }
         },
+        "qwen3-base": {
+          "name": "Qwen3.6 27B Q5 (base, reasoning)",
+          "limit": {
+            "context": 196608,
+            "output": 8192
+          }
+        },
         "qwen3-coder-q6": {
           "name": "Qwen3.6 27B Q6 (coder)",
           "limit": {
@@ -194,6 +201,34 @@
             "context": 131072,
             "output": 4096
           }
+        },
+        "gemma4-31b": {
+          "name": "Gemma 4 31B QAT (dense)",
+          "limit": {
+            "context": 65536,
+            "output": 8192
+          }
+        },
+        "gemma4-12b-coder": {
+          "name": "Gemma 4 12B Coder (Fable-5 tune)",
+          "limit": {
+            "context": 98304,
+            "output": 8192
+          }
+        },
+        "keye-vl": {
+          "name": "Qwen3-VL 30B MoE (vision, strong)",
+          "attachment": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ]
+          },
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
         }
       }
     },
@@ -225,7 +260,7 @@
         "-y",
         "@upstash/context7-mcp",
         "--api-key",
-        "<YOUR_CONTEXT7_API_KEY>"
+        "<REDACTED>"
       ]
     },
     "browserbase": {
@@ -317,7 +352,7 @@
     },
     "plan": {
       "mode": "primary",
-      "model": "llamaswap/qwen3-coder-large",
+      "model": "llamaswap/qwen3-base",
       "permission": {
         "edit": "deny",
         "write": "deny",
@@ -336,7 +371,7 @@
     },
     "orchestrator": {
       "mode": "primary",
-      "model": "llamaswap/qwen3-coder-large",
+      "model": "llamaswap/qwen3-base",
       "permission": {
         "edit": "deny",
         "write": "deny",
@@ -357,12 +392,14 @@
         "webfetch": "deny",
         "skill": "deny",
         "mcp": "deny",
+        "see_image": "allow",
         "external_directory": "deny"
       }
     },
     "workflow-orchestrator": {
       "mode": "primary",
-      "model": "llamaswap/qwen3-coder-large",
+      "hidden": true,
+      "model": "llamaswap/qwen3-base",
       "permission": {
         "edit": "deny",
         "write": "deny",
@@ -382,13 +419,14 @@
         "webfetch": "deny",
         "skill": "deny",
         "mcp": "deny",
+        "see_image": "allow",
         "external_directory": "deny"
       }
     },
     "dotfiles-dev": {
       "mode": "subagent",
       "hidden": true,
-      "model": "llamaswap/qwen3-coder-mid-q6",
+      "model": "llamaswap/qwen3-coder-large",
       "permission": {
         "edit": "ask",
         "bash": {
@@ -404,7 +442,7 @@
     "system-admin": {
       "mode": "subagent",
       "hidden": true,
-      "model": "llamaswap/qwen3-coder-mid-q6",
+      "model": "llamaswap/qwen3-coder-large",
       "permission": {
         "edit": "ask",
         "bash": {
@@ -437,7 +475,7 @@
     "expert-java-reviewer": {
       "mode": "subagent",
       "hidden": true,
-      "model": "llamaswap/qwen3-coder-mid-q6",
+      "model": "llamaswap/qwen3-coder-large",
       "permission": {
         "edit": "ask",
         "bash": {
@@ -470,7 +508,7 @@
     "java-hard-solver": {
       "mode": "subagent",
       "hidden": true,
-      "model": "llamaswap/qwen3-moe",
+      "model": "llamaswap/qwen3-coder-large",
       "prompt": "You are a deep Java problem solver. You are called exclusively for hard, well-scoped problems that have already stumped the primary developer agent. You receive a precise brief containing: the exact method or class under scrutiny, the invariant or contract being violated, all relevant interfaces and type signatures, and a clear description of the failure mode or design conflict. You do not navigate the codebase \u2014 everything you need is in the brief. Your job is to reason deeply: identify the root cause, consider algorithmic and design alternatives, reason about JVM behaviour (memory model, happens-before, autoboxing, type erasure, classloader), and produce a concrete, correct solution with a short explanation of why it works. If the brief is missing critical information, state exactly what is needed rather than guessing. Be concise \u2014 no preamble, no restating the problem.",
       "permission": {
         "edit": "ask",
@@ -526,7 +564,7 @@
     "webdev-dev": {
       "mode": "subagent",
       "hidden": true,
-      "model": "llamaswap/qwen3-coder-mid-q6",
+      "model": "llamaswap/qwen3-coder-large",
       "prompt": "You are a frontend implementation specialist covering React, Next.js (App Router and Pages Router), TypeScript, CSS, and Tailwind CSS. You receive delegated tasks from the orchestrator and carry them out: building components, implementing hooks, handling routing and server/client component boundaries, writing responsive Tailwind layouts, and managing CSS modules or global styles. Apply React best practices \u2014 composition over inheritance, correct use of useEffect dependencies, memoisation only where it demonstrably helps. For Next.js: prefer server components by default, use 'use client' only when necessary, handle metadata, loading, and error boundaries correctly. Run the dev server or build to verify there are no compile errors before reporting done. To keep context short, always prefer targeted tools: codegraph MCP tools for symbol/caller lookup, `graphify query` if graphify-out/graph.json exists, `rg` over grep, `fd` over find. Read only the specific lines you need.",
       "permission": {
         "question": "deny",
@@ -549,7 +587,7 @@
     "writer": {
       "mode": "subagent",
       "hidden": true,
-      "model": "llamaswap/qwen3-moe",
+      "model": "llamaswap/gemma4-31b",
       "prompt": "You are a technical writing specialist. You write and edit prose: README files, documentation, changelogs, commit messages, docstrings, inline comments, API descriptions, and any other written content. Adapt tone and detail level to the audience \u2014 terse for commit messages, thorough for README and API docs. For docstrings and comments, explain the why, not the what. Read existing files for style and context before writing so your output fits the surrounding material. Use `rg` or `fd` to find relevant examples in the codebase rather than reading files wholesale.",
       "permission": {
         "question": "deny",
@@ -571,7 +609,7 @@
     "test-dev": {
       "mode": "subagent",
       "hidden": true,
-      "model": "llamaswap/qwen3-coder-mid-q6",
+      "model": "llamaswap/qwen3-coder-large",
       "prompt": "You are a testing specialist. You receive delegated tasks from the orchestrator and write or fix tests across any language or framework (Jest, Vitest, JUnit, Playwright, Cypress, pytest, etc.). Follow arrange-act-assert structure. Mock at the right boundary \u2014 prefer real implementations over mocks unless I/O or non-determinism is involved. Aim for tests that document behaviour, not implementation details. For integration and e2e tests, prefer testing user-visible outcomes. Always run the test suite after writing tests and report pass/fail counts and any remaining failures. To keep context short, always prefer targeted tools: codegraph MCP tools for symbol/caller lookup, `graphify query` if graphify-out/graph.json exists, `rg` over grep, `fd` over find. Read only the specific lines you need.",
       "permission": {
         "edit": "ask",
@@ -644,12 +682,11 @@
     "step-planner": {
       "mode": "subagent",
       "hidden": true,
-      "model": "llamaswap/qwen3-coder-large",
+      "model": "llamaswap/qwen3-base",
       "permission": {
         "question": "deny",
         "workflow_control": "deny",
         "workflow_verify": "deny",
-        "workflow_review": "allow",
         "workflow_commit": "deny",
         "workflow_handoff": "deny",
         "read": "allow",
@@ -673,6 +710,7 @@
         "question": "deny",
         "workflow_control": "deny",
         "workflow_verify": "deny",
+        "workflow_review": "allow",
         "workflow_commit": "deny",
         "workflow_handoff": "deny",
         "read": "allow",
@@ -696,7 +734,7 @@
     "step-orchestrator": {
       "mode": "subagent",
       "hidden": true,
-      "model": "llamaswap/qwen3-coder-large",
+      "model": "llamaswap/qwen3-base",
       "permission": {
         "question": "deny",
         "workflow_control": "deny",
@@ -712,7 +750,8 @@
         "grep": "deny",
         "list": "deny",
         "webfetch": "deny",
-        "mcp": "deny"
+        "mcp": "deny",
+        "see_image": "allow"
       }
     }
   }

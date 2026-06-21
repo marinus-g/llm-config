@@ -16,8 +16,9 @@ ttl: 600
 # Example: export LLAMA_API_KEY=llama-local
 
 macros:
-  llama: ${LLAMA_SERVER}
-  models: ${MODELS_DIR}
+  llama: ~/work/llm/llama.cpp/build/bin/llama-server
+  models: ~/.lmstudio/models/lmstudio-community
+  hf_cache: ~/.cache/huggingface/hub/
 
 models:
   # ─────────────────────────────────────────────────────────────
@@ -48,6 +49,43 @@ models:
       --reasoning off
       --no-warmup
       --defrag-thold 0.1
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Base Qwen3.6 27B Q5_K_M — reasoning enabled (thinking mode)
+  # Uses --jinja for Qwen3.6 template. No --reasoning off → thinking is on.
+  # Coding sampling: temp 0.6, top-k 20, top-p 0.95, min-p 0.
+  # ─────────────────────────────────────────────────────────────
+  "qwen3-base":
+    name: "Qwen3.6 27B Q5 (base, reasoning)"
+    description: "Q5_K_M — reasoning enabled, 196608 ctx, single slot, KV q8"
+    ttl: 600
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q5_K_M.gguf
+      -ngl 80
+      -c 196608
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --temp 0.6
+      --top-k 20
+      --top-p 0.95
+      --min-p 0
+      --presence-penalty 0.0
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
@@ -76,6 +114,11 @@ models:
       --reasoning off
       --no-warmup
       --defrag-thold 0.1
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
@@ -104,6 +147,11 @@ models:
       --reasoning off
       --no-warmup
       --defrag-thold 0.1
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
@@ -132,6 +180,11 @@ models:
       --reasoning off
       --no-warmup
       --defrag-thold 0.1
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
@@ -160,6 +213,11 @@ models:
       --reasoning off
       --no-warmup
       --defrag-thold 0.1
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
@@ -189,6 +247,11 @@ models:
       --jinja
       --no-warmup
       --defrag-thold 0.1
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
@@ -214,8 +277,14 @@ models:
       --cache-type-v q8_0
       -fa auto
       --jinja
+      --reasoning off
       --no-warmup
       --defrag-thold 0.1
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
@@ -241,8 +310,14 @@ models:
       --cache-type-v q8_0
       -fa auto
       --jinja
+      --reasoning off
       --no-warmup
       --defrag-thold 0.1
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
@@ -268,6 +343,11 @@ models:
       --jinja
       --no-warmup
       --defrag-thold 0.1
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
@@ -293,7 +373,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${MODELS_DIR}/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -m ${models}/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
       -ngl 80
       -c 65536
       -np 1
@@ -306,6 +386,11 @@ models:
       --jinja
       --reasoning off
       --no-warmup
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
@@ -331,7 +416,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${MODELS_DIR}/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -m ${models}/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
       -ngl 80
       -c 98304
       -np 1
@@ -344,6 +429,11 @@ models:
       --jinja
       --reasoning off
       --no-warmup
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
@@ -369,7 +459,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${MODELS_DIR}/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -m ${models}/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
       -ngl 80
       -c 196608
       -np 1
@@ -382,6 +472,11 @@ models:
       --jinja
       --reasoning off
       --no-warmup
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
@@ -398,7 +493,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${MODELS_DIR}/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
+      -m ${models}/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
       -ngl 99
       -c 393216
       -np 4
@@ -411,6 +506,13 @@ models:
       --jinja
       --no-warmup
       --defrag-thold 0.1
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
+      --repeat-penalty 1.1
+      --repeat-last-n 256
       --api-key ${env.LLAMA_API_KEY}
 
   # =============================================================================
@@ -426,7 +528,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${MODELS_DIR}/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
+      -m ${models}/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
       -ngl 0
       -c 393216
       -np 4
@@ -437,6 +539,13 @@ models:
       --cache-type-v q4_0
       --jinja
       --no-warmup
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
+      --repeat-penalty 1.1
+      --repeat-last-n 256
       --api-key ${env.LLAMA_API_KEY}
 
   "qwen3-coder-cpu":
@@ -457,6 +566,11 @@ models:
       --cache-type-v q8_0
       --jinja
       --no-warmup
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   "qwen3-coder-mid-cpu":
@@ -477,6 +591,11 @@ models:
       --cache-type-v q8_0
       --jinja
       --no-warmup
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   "qwen3-coder-large-cpu":
@@ -497,6 +616,11 @@ models:
       --cache-type-v q8_0
       --jinja
       --no-warmup
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   "qwen3-vl-cpu":
@@ -518,6 +642,11 @@ models:
       --cache-type-v q8_0
       --jinja
       --no-warmup
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   "qwen3-moe-cpu":
@@ -538,6 +667,11 @@ models:
       --cache-type-v q8_0
       --jinja
       --no-warmup
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   "qwen3-moe-large-cpu":
@@ -558,6 +692,11 @@ models:
       --cache-type-v q8_0
       --jinja
       --no-warmup
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   "qwen3-moe-vl-cpu":
@@ -579,6 +718,108 @@ models:
       --cache-type-v q8_0
       --jinja
       --no-warmup
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Gemma 4 31B QAT — strongest dense model that fully fits in 32 GB VRAM
+  # unsloth UD-Q4_K_XL quant (17.3 GB). Natively multimodal (text-only profile
+  # here; add --mmproj mmproj-BF16.gguf for vision later).
+  # Gemma 4 sampling defaults: temp 1.0, top-k 64, top-p 0.95.
+  # ─────────────────────────────────────────────────────────────
+  "gemma4-31b":
+    name: "Gemma 4 31B QAT (dense)"
+    description: "unsloth UD-Q4_K_XL — 31B dense, 65536 ctx, single slot"
+    ttl: 600
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/unsloth/gemma-4-31B-it-qat-GGUF/gemma-4-31B-it-qat-UD-Q4_K_XL.gguf
+      -ngl 99
+      -c 65536
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --temp 1.0
+      --top-k 64
+      --top-p 0.95
+      --min-p 0
+      --presence-penalty 1.0
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Qwen3-VL 30B-A3B — strongest supported GPU vision model
+  # 30B total, ~3B active per token; Q4_K_M + F16 mmproj.
+  # Context trimmed to 32768 for mmproj overhead.
+  # ─────────────────────────────────────────────────────────────
+  "keye-vl":
+    name: "Qwen3-VL 30B MoE (vision, strong)"
+    description: "Qwen3-VL-30B-A3B Q4_K_M + F16 mmproj — strongest supported GPU vision"
+    ttl: 300
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen/Qwen3-VL-30B-A3B-Instruct-GGUF/Qwen3VL-30B-A3B-Instruct-Q4_K_M.gguf
+      --mmproj ${models}/Qwen/Qwen3-VL-30B-A3B-Instruct-GGUF/mmproj-Qwen3VL-30B-A3B-Instruct-F16.gguf
+      -ngl 99
+      -c 32768
+      -n 8192
+      -b 512
+      -ub 512
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --temp 0.7
+      --top-p 0.8
+      --top-k 20
+      --min-p 0
+      --presence-penalty 1.0
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Gemma 4 12B coder — #1 trending GGUF (June 2026), Fable-5 tune
+  # Q6_K (9.8 GB) — compact, fast, strong at coding tasks.
+  # Mid-context (98304) to give coding sessions more room than default.
+  # ─────────────────────────────────────────────────────────────
+  "gemma4-12b-coder":
+    name: "Gemma 4 12B Coder (Fable-5 tune)"
+    description: "#1 trending — yuxinlu1 Fable-5/Composer2.5, Q6_K, 98304 ctx"
+    ttl: 600
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF/gemma4-coding-Q6_K.gguf
+      -ngl 99
+      -c 98304
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --temp 1.0
+      --top-k 64
+      --top-p 0.95
+      --min-p 0
+      --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
   # Gemma 3 4B — small fast CPU vision model used as fallback by the see_image plugin
@@ -591,14 +832,18 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${MODELS_DIR}/bartowski/google_gemma-3-4b-it-GGUF/blobs/google_gemma-3-4b-it-Q4_K_M.gguf
-      --mmproj ${MODELS_DIR}/bartowski/google_gemma-3-4b-it-GGUF/blobs/mmproj-google_gemma-3-4b-it-f16.gguf
+      -m ${hf_cache}/models--bartowski--google_gemma-3-4b-it-GGUF/blobs/google_gemma-3-4b-it-Q4_K_M.gguf
+      --mmproj ${hf_cache}/models--bartowski--google_gemma-3-4b-it-GGUF/blobs/mmproj-google_gemma-3-4b-it-f16.gguf
       -ngl 0
       --no-mmproj-offload
       -c 8192
       -n 512
       --jinja
       --no-warmup
+      --temp 1.0
+      --top-k 64
+      --top-p 0.95
+      --min-p 0
       --api-key ${env.LLAMA_API_KEY}
 
 # =============================================================================
@@ -621,6 +866,9 @@ matrix:
     q:   qwopus-coder-q6
     qm:  qwopus-coder-mid-q6
     ql:  qwopus-coder-large-q6
+    g31: gemma4-31b
+    kv:  keye-vl
+    g12: gemma4-12b-coder
     # FastContext exploration model (4B — evicts main GPU model when requested;
     # no coexistence set, so loading it unloads whatever is resident)
     fc:  fastcontext-4b
@@ -638,7 +886,7 @@ matrix:
     # Any single Qwen GPU model may run alongside any single CPU shadow model.
     # Qwopus profiles intentionally run alone so stale CPU shadows do not stay
     # loaded while opencode swaps between Qwopus context sizes.
-    gpu_cpu: "(c | cm | cl | v | m | ml | mv) & (cc | cmc | clc | vc | mc | mlc | mvc | gvc | fcc)"
+    gpu_cpu: "(c | cm | cl | v | m | ml | mv | g31 | kv | g12) & (cc | cmc | clc | vc | mc | mlc | mvc | gvc | fcc)"
     # fcc (fastcontext-4b-cpu) is in gpu_cpu above so it can coexist with a GPU primary as
     # a manual shadow, but fastcontext-4b (GPU) is intentionally in NO coexistence set:
     # loading it evicts whatever GPU model is resident, giving FastContext the full card

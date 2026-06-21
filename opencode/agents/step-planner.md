@@ -2,7 +2,7 @@
 name: step-planner
 description: Workflow per-step planner — explores and plans a step, dispatches the step-orchestrator, then requires step-reviewer approval. Does not edit files or check workflow checkboxes.
 mode: subagent
-model: llamaswap/qwen3-coder-large
+model: llamaswap/qwen3-base
 permission:
   question: deny
   workflow_control: deny

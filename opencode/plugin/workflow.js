@@ -7,7 +7,7 @@ import {
   validateWorkflow, parseWorkflowPath, checkTodoInSource, uncheckTodosInSource, runCommand,
   workflowIdFromPath, saveWorkflow, loadWorkflow, listWorkflows, deleteWorkflow,
   acquireLock, releaseLock, inspectLock, archiveWorkflowState, git, gitPreflight, createWorkflowBranch,
-  verifyWorkflowBranch, createStageCommit, snapshotWorkflowSource, compareWorkflowSource,
+  verifyWorkflowBranch, createStageCommit, createTodoCheckpointCommit, snapshotWorkflowSource, compareWorkflowSource,
   refreshWorkflowSourceSnapshot, appendWorkflowEvent, workflowGitDiagnostics,
   workflowFinishReport, analyzeWorkflowRecovery, workflowStageFacts, createWorkflowDirectory,
 } from "../lib/workflow-core.js";
@@ -186,9 +186,11 @@ function executePrompt(state, todo, retry = false) {
   const stepText = todoText(todo);
   const retryNote = retry ? " (This is a retry — previous verification failed.)" : "";
   const noCode = isNoCodeStep(todo);
+  const evidenceDir = join(state.sourcePath, "evidence");
   const sourceGuidance = `Treat the snapshotted workflow source at ${state.sourcePath} as immutable. ` +
-    `Write any generated evidence or notes outside the workflow source tree, for example under ` +
-    `.docs/workflow-evidence/; do not place deliverables in .docs/ai-tasks or modify the workflow source snapshot. `;
+    `Write any generated evidence, research notes, or lookup records into ${evidenceDir}/ (create the directory if needed); ` +
+    `do NOT write files directly under ${state.sourcePath} itself — especially not any NN-name.md file — ` +
+    `and do not modify files in the workflow source snapshot. `;
   const delegateInstruction = noCode
     ? `Delegate this step to the \`step-planner\` subagent. This is a Context7 research step — ` +
       `instruct the step-planner to dispatch a direct \`research\` child that queries every required library ` +
@@ -735,6 +737,20 @@ export const server = async ({ client }) => {
     event(state, "todo.completed", { id: todo.id });
     saveWorkflow(state);
     await persistTodoReport(state, sessionID, todo, Date.now());
+    if (state.perTodoCommits) {
+      const checkpointResult = createTodoCheckpointCommit(state, todo);
+      if (!checkpointResult.ok) {
+        persistBlock(state, sessionID, `todo checkpoint commit failed: ${checkpointResult.reason}`);
+        return;
+      }
+      if (!checkpointResult.skipped) {
+        state.expectedHead = checkpointResult.head;
+        state.todoCommits ??= [];
+        state.todoCommits.push({ stage: todo.stage, todoId: todo.id, sha: checkpointResult.sha, at: Date.now() });
+        event(state, "todo.committed", { id: todo.id, sha: checkpointResult.sha });
+        saveWorkflow(state);
+      }
+    }
     const pressure = getContextPressure(sessionID);
     if (pressure?.fraction >= CONTEXT_WARNING_FRACTION) {
       await autoCompactAtBoundary(state, sessionID, pressure);
@@ -1385,6 +1401,7 @@ export const server = async ({ client }) => {
           gateEvidence: null, commitEvidence: null, manualEvidence: [], context7Evidence: { resolved: false, queried: false },
           skipReasons: {}, commits: [], blocker: null, startedAt: Date.now(), updatedAt: Date.now(), completedAt: null,
           noConfirm: flagBool(args, "no-confirm"), pauseRequest: null, pausedCheckpoint: null,
+          perTodoCommits: true, todoCommits: [],
           stageHandoffs: {}, stageCompaction: null, stageTransition: null,
           executionEvidence: null,
           reporting: { stageStartedAt: Date.now(), todoStartedAt: null, todos: {}, stages: {} },

@@ -9,6 +9,11 @@
 
 const MAX_IDENTICAL_CALLS = 2;
 const MAX_IDENTICAL_PERMISSION_ASKS = 2;
+
+// Read-only discovery tools should never retry an identical errored call — one retry
+// wastes a full turn and the model can't recover without variety. Limit to 1 so the
+// guard trips on the SECOND identical call instead of the third.
+const MAX_IDENTICAL_BY_TOOL = { read: 1, glob: 1, list: 1 };
 const REPEAT_WINDOW_MS = 90_000; // identical calls only count toward a loop if within this gap
 const RECOVERY_TOOLS = new Set([
   "task", "question", "invalid",
@@ -178,7 +183,8 @@ export const server = async ({ client }) => {
       const key = `tool:${callKey(tool, output.args)}`;
       const count = track(input.sessionID, key);
 
-      if (count > MAX_IDENTICAL_CALLS) {
+      const toolLimit = MAX_IDENTICAL_BY_TOOL[tool] ?? MAX_IDENTICAL_CALLS;
+      if (count > toolLimit) {
         const preview = stableStringify(output.args ?? {}).slice(0, 240);
         const argHash = stableStringify(output.args ?? {});
         openCircuit(
@@ -188,9 +194,12 @@ export const server = async ({ client }) => {
           argHash,
         );
         toast(`Tool loop blocked: ${tool} repeated ${count} times`);
+        const extra = toolLimit < MAX_IDENTICAL_CALLS
+          ? ` The path or pattern errored — do not retry it. Return your final answer with what you already have.`
+          : "";
         throw new Error(recoveryMessage(
           `Refused repeated identical tool call (${tool}) after ` +
-            `${MAX_IDENTICAL_CALLS} completed attempt(s). Arguments: ${preview}`,
+            `${toolLimit} completed attempt(s). Arguments: ${preview}${extra}`,
         ));
       }
     },

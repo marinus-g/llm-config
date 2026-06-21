@@ -5,7 +5,7 @@
  * image-rejection error or when the user references an image. The tool:
  *   1. Resolves the image from the opencode SQLite DB (pasted/dragged attachments),
  *      falls back to the filesystem, then finally to the Wayland clipboard.
- *   2. Calls qwen3-moe-vl (GPU, strong) via the local llama-swap endpoint.
+ *   2. Calls keye-vl (Qwen3-VL 30B MoE, strongest supported GPU vision) via the local llama-swap endpoint.
  *      Falls back to gemma3-vl-cpu (CPU, fast) on error, timeout, or empty response.
  *
  * Also injects system-prompt instructions telling the primary model to call
@@ -23,8 +23,8 @@ import { Database } from "bun:sqlite";
 const LLAMA_SWAP_URL = "http://127.0.0.1:5099/v1/chat/completions";
 const LLAMA_API_KEY  = process.env.LLAMA_API_KEY ?? "llama-local";
 
-/** Primary vision model — GPU, strongest quality */
-const PRIMARY_MODEL  = "qwen3-moe-vl";
+/** Primary vision model — Qwen3-VL 30B MoE, strongest supported GPU vision */
+const PRIMARY_MODEL  = "keye-vl";
 /** Fallback vision model — CPU, fast, never evicts GPU coder model */
 const FALLBACK_MODEL = "gemma3-vl-cpu";
 
@@ -326,7 +326,7 @@ export const server = async (ctx) => {
       "See an image/screenshot that the current model cannot view. " +
       "Call when the user attaches an image and you get a \"this model does not support image input\" " +
       "or \"Cannot read\" error, or when a screenshot/image is referenced. " +
-      "Routes the image to a local vision model (qwen3-moe-vl GPU → gemma3-vl-cpu CPU fallback) " +
+      "Routes the image to a local vision model (Qwen3-VL primary → gemma3-vl-cpu CPU fallback) " +
       "and returns a detailed textual description. " +
       "Pass filePath as an absolute path, a bare filename (auto-located from opencode DB or filesystem), " +
       "or \"clipboard\" to read the most recent Wayland clipboard image.",

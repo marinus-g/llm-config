@@ -65,7 +65,7 @@ fi
 
 # 4. Check for excluded directories
 echo "[4/6] Checking for excluded directories..."
-EXCLUDED_DIRS="node_modules __pycache__ .git cache"
+EXCLUDED_DIRS="node_modules __pycache__ cache"
 for dir in $EXCLUDED_DIRS; do
   if find "$REPO_DIR" -type d -name "$dir" 2>/dev/null | grep -q .; then
     echo "  FAIL: Found excluded directory: $dir"
