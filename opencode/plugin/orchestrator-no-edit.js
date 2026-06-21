@@ -39,8 +39,12 @@ const MCP_WRITE_PATTERNS = [
 /** Agent names that must never edit source files directly. */
 const READONLY_AGENTS = ["orchestrator", "plan"];
 
-/** Pure-router orchestrator recovery tools. */
-const ORCHESTRATOR_ALLOWED_TOOLS = new Set(["task", "question", "invalid"]);
+/** Pure-router orchestrator recovery tools + workflow tools the orchestrator
+ *  is explicitly instructed to run directly in its own session. */
+const ORCHESTRATOR_ALLOWED_TOOLS = new Set([
+  "task", "question", "invalid",
+  "workflow_control", "workflow_verify", "workflow_commit", "workflow_handoff",
+]);
 
 /**
  * Try to resolve metadata for a session. Do not cache this value: OpenCode can

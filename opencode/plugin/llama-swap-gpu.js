@@ -87,7 +87,12 @@ export const server = async () => {
       if (providerID !== PROVIDER_ID || !model) return;
       if (model.endsWith("-cpu")) return;
 
-      // All agents (including orchestrator) get GPU preference.
+      // FastContext-4B is routed by the router (it evicts the primary GPU model
+      // to take the full card; CPU fallback on GPU load failure). Skip prefer-GPU
+      // so the router owns routing entirely — forcing it here would interfere.
+      if (model.startsWith("fastcontext")) return;
+
+      // All other agents (including orchestrator) get GPU preference.
       // The orchestrator especially needs it after a subagent finishes,
       // because the router's grace period may otherwise route it to CPU.
       output.headers["X-Llama-Swap-Prefer-GPU"] = "true";

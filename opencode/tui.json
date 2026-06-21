@@ -1,0 +1,1 @@
+{ "plugin": ["./tui/workflow-tui.js", "./tui/model-override-tui.tsx", "./plugin/session-hud.tsx"] }

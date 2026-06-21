@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+# opencode-upgrade — install, switch, and rollback opencode versions
+#
+# Usage:
+#   opencode-upgrade              # install latest
+#   opencode-upgrade 1.16.2      # install specific version
+#   opencode-upgrade --list      # show installed versions
+#   opencode-upgrade --rollback 1.16.2
+
+set -euo pipefail
+
+BIN_DIR="${OPENCODE_BIN_DIR:-$HOME/.opencode/bin}"
+REPO="anomalyco/opencode"
+SYMLINK="$BIN_DIR/opencode"
+
+# ── helpers ──────────────────────────────────────────────────────────────────
+
+die()  { echo "error: $*" >&2; exit 1; }
+info() { echo "$*"; }
+
+get_latest_version() {
+    curl -sf "https://api.github.com/repos/$REPO/releases/latest" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'].lstrip('v'))" \
+        || die "failed to fetch latest version from GitHub"
+}
+
+detect_platform() {
+    local os arch
+    os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    arch=$(uname -m)
+    case "$arch" in
+        x86_64)  arch="x64" ;;
+        aarch64) arch="arm64" ;;
+        *) die "unsupported architecture: $arch" ;;
+    esac
+    echo "${os}-${arch}"
+}
+
+active_version() {
+    if [[ -L "$SYMLINK" ]]; then
+        basename "$(readlink "$SYMLINK")" | sed 's/^opencode-//'
+    elif [[ -f "$SYMLINK" ]]; then
+        "$SYMLINK" --version 2>/dev/null || echo "unknown"
+    else
+        echo "(none)"
+    fi
+}
+
+switch_to() {
+    local version="$1"
+    local target="$BIN_DIR/opencode-$version"
+    [[ -f "$target" ]] \
+        || die "opencode $version is not installed — run '$(basename "$0") $version' to download it"
+
+    local prev
+    prev=$(active_version)
+
+    ln -sf "$target" "$SYMLINK"
+    info "Active: opencode $version"
+
+    if [[ -n "$prev" && "$prev" != "$version" && "$prev" != "unknown" && "$prev" != "(none)" ]]; then
+        info "Previous: $prev  |  rollback: $(basename "$0") --rollback $prev"
+    fi
+}
+
+list_versions() {
+    info "Installed opencode versions in $BIN_DIR:"
+    local active
+    active=$(active_version)
+    local found=0
+    for f in "$BIN_DIR"/opencode-*; do
+        [[ -f "$f" ]] || continue
+        local ver
+        ver=$(basename "$f" | sed 's/^opencode-//')
+        found=1
+        if [[ "$ver" == "$active" ]]; then
+            info "  * $ver  (active)"
+        else
+            info "    $ver"
+        fi
+    done
+    [[ $found -eq 1 ]] || info "  (none)"
+}
+
+# ── migration: if current binary is a plain file, version it ─────────────────
+
+migrate_if_needed() {
+    [[ -L "$SYMLINK" ]] && return        # already a symlink — nothing to do
+    [[ -f "$SYMLINK" ]] || return        # doesn't exist — nothing to do
+
+    local cur_ver
+    cur_ver=$("$SYMLINK" --version 2>/dev/null || echo "unknown")
+    local dest="$BIN_DIR/opencode-$cur_ver"
+
+    if [[ -f "$dest" ]]; then
+        info "Already versioned as opencode-$cur_ver; replacing symlink."
+        rm "$SYMLINK"
+    else
+        info "Migrating existing binary → opencode-$cur_ver"
+        mv "$SYMLINK" "$dest"
+    fi
+
+    ln -sf "$dest" "$SYMLINK"
+    info "Symlink set up: opencode → opencode-$cur_ver"
+}
+
+# ── main ─────────────────────────────────────────────────────────────────────
+
+mkdir -p "$BIN_DIR"
+
+# Always migrate a plain-file binary to a versioned + symlink layout on first run
+case "${1:-}" in -h|--help) ;; *) migrate_if_needed ;; esac
+
+case "${1:-}" in
+    -h|--help)
+        cat <<'EOF'
+opencode-upgrade — install, switch, and rollback opencode versions
+
+Usage:
+  opencode-upgrade                   install latest version
+  opencode-upgrade 1.16.2            install (or switch to) a specific version
+  opencode-upgrade --list            show installed versions
+  opencode-upgrade --rollback 1.16.2 switch to an already-downloaded version
+  opencode-upgrade --check           print the latest available version
+
+Binaries are saved as ~/.opencode/bin/opencode-<version> and the active
+one is selected via a symlink at ~/.opencode/bin/opencode, so switching
+is instant and rollback is one command.
+EOF
+        exit 0
+        ;;
+
+    --list)
+        list_versions
+        exit 0
+        ;;
+
+    --rollback)
+        [[ -n "${2:-}" ]] || die "--rollback requires a version (e.g. --rollback 1.16.2)"
+        migrate_if_needed
+        switch_to "$2"
+        exit 0
+        ;;
+
+    --check)
+        latest=$(get_latest_version)
+        current=$(active_version)
+        info "Latest:  $latest"
+        info "Current: $current"
+        [[ "$latest" == "$current" ]] && info "Already up to date." || info "Run '$(basename "$0")' to install $latest."
+        exit 0
+        ;;
+esac
+
+# Install (or switch to) a version
+VERSION="${1:-}"
+VERSION="${VERSION#v}"
+
+if [[ -z "$VERSION" ]]; then
+    info "Fetching latest version…"
+    VERSION=$(get_latest_version)
+fi
+
+TARGET="$BIN_DIR/opencode-$VERSION"
+
+migrate_if_needed
+
+# Already downloaded — just switch the symlink
+if [[ -f "$TARGET" ]]; then
+    info "opencode $VERSION already downloaded."
+    switch_to "$VERSION"
+    exit 0
+fi
+
+# Download
+PLATFORM=$(detect_platform)
+URL="https://github.com/$REPO/releases/download/v$VERSION/opencode-${PLATFORM}.tar.gz"
+
+info "Downloading opencode $VERSION (${PLATFORM})…"
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+curl -fL --progress-bar "$URL" -o "$TMP/opencode.tar.gz" \
+    || die "download failed — does v$VERSION exist? https://github.com/$REPO/releases/tag/v$VERSION"
+
+tar -xzf "$TMP/opencode.tar.gz" -C "$TMP" opencode \
+    || die "failed to extract archive (corrupt download?)"
+
+chmod +x "$TMP/opencode"
+mv "$TMP/opencode" "$TARGET"
+info "Saved: $TARGET"
+
+switch_to "$VERSION"

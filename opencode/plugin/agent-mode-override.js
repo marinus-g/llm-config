@@ -6,6 +6,11 @@
  * plugin folds a short current-agent reminder into the first system prompt.
  * Some local Qwen chat templates reject multiple system messages, so keep the
  * transformed system prompt as a single string.
+ *
+ * IMPORTANT: opencode's plugin.trigger() dispatcher passes output by reference but
+ * does NOT read back re-assigned properties — the caller holds a local reference to
+ * the original array `e` and uses that. So `output.system = [...]` is silently
+ * ignored. All mutations to output.system MUST be in-place (splice/unshift/pop/…).
  */
 
 async function resolveAgent(client, sessionID) {
@@ -19,9 +24,10 @@ async function resolveAgent(client, sessionID) {
   }
 }
 
+// Prepend a reminder to the system prompt IN PLACE (unshift on the existing array).
+// Must not reassign output.system — opencode keeps a ref to the original array.
 function prependSystem(output, reminder) {
-  const existing = output.system.filter(Boolean).join("\n\n");
-  output.system = [existing ? `${reminder}\n\n${existing}` : reminder];
+  output.system.unshift(reminder);
 }
 
 function sanitizeText(text) {
@@ -59,13 +65,23 @@ export const server = async ({ client }) => {
         prependSystem(output,
           "Current agent override: the active agent is orchestrator. " +
             "Ignore earlier transcript text from the planning agent as historical context only; the planning agent is no longer active. " +
-            "Follow the orchestrator routing rules and delegate file, command, tool, log, local-state, validation, and MCP work with task().",
+            "Call workflow_control, workflow_verify, workflow_commit, and workflow_handoff directly when an explicit workflow phase prompt requires them; never delegate those calls. " +
+            "Delegate all other file, command, tool, log, local-state, validation, and MCP work with task(), using explore for read-only investigation.",
         );
       } else if (agentLower.includes("plan")) {
         prependSystem(output,
           "Current agent override: the active agent is plan. " +
             "Do not implement changes or delegate writes; produce plans, findings, questions, or TODO content in chat.",
         );
+      }
+
+      // Qwen3-coder chat templates reject multiple system messages — they require exactly
+      // ONE system block. Collapse IN PLACE so opencode's local `e` array reference
+      // (which it holds and uses after the hook returns) ends up with length 1.
+      // Reassigning `output.system = [...]` is silently ignored by opencode's dispatcher.
+      if (output.system.length > 1) {
+        const joined = output.system.filter(Boolean).join("\n\n");
+        output.system.splice(0, output.system.length, joined);
       }
     },
   };

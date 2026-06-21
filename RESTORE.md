@@ -43,11 +43,13 @@ chmod 600 ~/.claude/.credentials.json
 ```bash
 cp opencode/AGENTS.md ~/.config/opencode/AGENTS.md
 cp opencode/opencode.json ~/.config/opencode/opencode.json
+cp opencode/tui.json ~/.config/opencode/tui.json
 cp opencode/vision-image-workflow.md ~/.config/opencode/vision-image-workflow.md
 cp opencode/package.json ~/.config/opencode/package.json
 cp opencode/agents/*.md ~/.config/opencode/agents/
 cp opencode/commands/*.md ~/.config/opencode/commands/
 cp opencode/plugin/*.js ~/.config/opencode/plugin/
+cp opencode/plugin/session-hud.tsx ~/.config/opencode/plugin/
 
 # Skills
 for skill_dir in opencode/skills/*/; do
@@ -63,6 +65,13 @@ done
 
 # opencode.json.example is a TEMPLATE — restore opencode.json instead
 # The .example has apiKey values redacted to <REDACTED>
+```
+
+### OpenCode Scripts
+
+```bash
+cp scripts/opencode-upgrade ~/.local/bin/opencode-upgrade
+chmod +x ~/.local/bin/opencode-upgrade
 ```
 
 ## PI

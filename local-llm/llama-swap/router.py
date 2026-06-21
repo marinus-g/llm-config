@@ -317,6 +317,15 @@ class ProxyHandler(BaseHTTPRequestHandler):
             body, routed_model, used_context_tokens = self._maybe_rewrite_chat_body(body)
             headers["Content-Length"] = str(len(body))
 
+        # fastcontext-4b always goes to GPU (it evicts the resident primary model).
+        # If the GPU load fails before any response bytes are sent, transparently
+        # retry on the CPU fallback instead of surfacing a 502 to the client.
+        cpu_fallback_model = (
+            "fastcontext-4b-cpu"
+            if routed_model == "fastcontext-4b"
+            else None
+        )
+
         track_gpu_request = routed_model is not None and not routed_model.endswith("-cpu")
         if track_gpu_request:
             self.state.start_gpu_request(routed_model, used_context_tokens)
@@ -373,6 +382,20 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     self.connection.close()
                 except Exception:
                     pass
+            elif cpu_fallback_model:
+                # GPU load failed before streaming — retry transparently on CPU fallback.
+                logging.warning(
+                    "fastcontext-4b GPU load failed (%s); retrying on %s",
+                    exc,
+                    cpu_fallback_model,
+                )
+                # Release GPU accounting before the fallback (it runs on CPU).
+                if track_gpu_request:
+                    self.state.finish_gpu_request()
+                    track_gpu_request = False
+                # conn.close() will be called by the finally block; retry on new conn.
+                self._retry_on_cpu_fallback(body, path, cpu_fallback_model)
+                return
             else:
                 try:
                     self.send_error(502, f"llama-swap backend unavailable: {exc}")
@@ -381,6 +404,64 @@ class ProxyHandler(BaseHTTPRequestHandler):
         finally:
             if track_gpu_request:
                 self.state.finish_gpu_request()
+            conn.close()
+
+    def _retry_on_cpu_fallback(self, body: bytes, path: str, cpu_model: str) -> None:
+        """Retry a failed fastcontext-4b GPU request on the CPU fallback model."""
+        try:
+            payload = json.loads(body.decode("utf-8"))
+            payload["model"] = cpu_model
+            body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        except Exception as exc:
+            logging.warning("failed to rewrite body for CPU fallback: %s", exc)
+
+        headers = self._forward_headers()
+        headers["Content-Length"] = str(len(body))
+        conn = self.state.backend_connection()
+        response_started = False
+        try:
+            conn.request(self.command, path, body=body, headers=headers)
+            response = conn.getresponse()
+            self.send_response(response.status, response.reason)
+            response_headers = response.getheaders()
+            has_content_length = any(name.lower() == "content-length" for name, _ in response_headers)
+            for name, value in response.getheaders():
+                if name.lower() not in HOP_BY_HOP_HEADERS:
+                    self.send_header(name, value)
+            if not has_content_length:
+                self.send_header("Transfer-Encoding", "chunked")
+            self.end_headers()
+            response_started = True
+
+            while True:
+                chunk = response.read(4096)
+                if not chunk:
+                    break
+                if has_content_length:
+                    self.wfile.write(chunk)
+                else:
+                    self.wfile.write(f"{len(chunk):x}\r\n".encode("ascii"))
+                    self.wfile.write(chunk)
+                    self.wfile.write(b"\r\n")
+                self.wfile.flush()
+            if not has_content_length:
+                self.wfile.write(b"0\r\n\r\n")
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            logging.info("client disconnected during CPU fallback for %s", path)
+        except Exception as exc:
+            logging.exception("CPU fallback request also failed: %s", exc)
+            if response_started:
+                try:
+                    self.connection.close()
+                except Exception:
+                    pass
+            else:
+                try:
+                    self.send_error(502, f"llama-swap CPU fallback unavailable: {exc}")
+                except (BrokenPipeError, ConnectionResetError, socket.timeout):
+                    logging.info("client disconnected before CPU fallback error could be sent")
+        finally:
             conn.close()
 
     def _forward_headers(self) -> dict[str, str]:

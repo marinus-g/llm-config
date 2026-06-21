@@ -90,6 +90,20 @@
             "output": 8192
           }
         },
+        "gemma3-vl-cpu": {
+          "name": "Gemma 3 4B VL (CPU)",
+          "attachment": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ]
+          },
+          "limit": {
+            "context": 8192,
+            "output": 512
+          }
+        },
         "qwopus-coder-q6": {
           "name": "Qwopus3.6 27B Coder MTP Q6 (focused)",
           "limit": {
@@ -172,6 +186,13 @@
           "limit": {
             "context": 196608,
             "output": 8192
+          }
+        },
+        "fastcontext-4b": {
+          "name": "FastContext 4B RL (repo explorer)",
+          "limit": {
+            "context": 98304,
+            "output": 4096
           }
         }
       }
@@ -259,7 +280,11 @@
     "bash": {
       "*": "ask"
     },
-    "edit": "ask"
+    "edit": "ask",
+    "workflow_control": "deny",
+    "workflow_verify": "deny",
+    "workflow_commit": "deny",
+    "workflow_handoff": "deny"
   },
   "plugin": [
     "opencode-power-pack@git+https://github.com/waybarrios/opencode-power-pack.git",
@@ -267,12 +292,15 @@
     "./plugin/notify.js",
     "./plugin/context-guard.js",
     "./plugin/bash-guard.js",
-    "./plugin/agent-mode-override.js",
+    "./plugin/model-override.js",
     "./plugin/orchestrator-no-edit.js",
     "./plugin/plan-no-jetbrains-write.js",
     "./plugin/tool-loop-guard.js",
     "./plugin/llama-swap-gpu.js",
-    "./plugin/goal.js"
+    "./plugin/see-image.js",
+    "./plugin/goal.js",
+    "./plugin/workflow.js",
+    "./plugin/agent-mode-override.js"
   ],
   "agent": {
     "build": {
@@ -294,7 +322,9 @@
         "write": "deny",
         "task": "deny",
         "todowrite": "deny",
-        "bash": { "*": "ask" },
+        "bash": {
+          "*": "ask"
+        },
         "read": "allow",
         "glob": "allow",
         "grep": "allow",
@@ -312,6 +342,10 @@
         "bash": "deny",
         "task": "allow",
         "question": "allow",
+        "workflow_control": "allow",
+        "workflow_verify": "allow",
+        "workflow_commit": "allow",
+        "workflow_handoff": "allow",
         "todowrite": "deny",
         "read": "deny",
         "glob": "deny",
@@ -444,6 +478,11 @@
       "hidden": true,
       "model": "llamaswap/qwopus-coder-large-q6",
       "permission": {
+        "question": "deny",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
         "edit": "ask",
         "bash": {
           "*": "ask"
@@ -462,6 +501,11 @@
       "model": "llamaswap/qwen3-coder-mid-q6",
       "prompt": "You are a frontend implementation specialist covering React, Next.js (App Router and Pages Router), TypeScript, CSS, and Tailwind CSS. You receive delegated tasks from the orchestrator and carry them out: building components, implementing hooks, handling routing and server/client component boundaries, writing responsive Tailwind layouts, and managing CSS modules or global styles. Apply React best practices — composition over inheritance, correct use of useEffect dependencies, memoisation only where it demonstrably helps. For Next.js: prefer server components by default, use 'use client' only when necessary, handle metadata, loading, and error boundaries correctly. Run the dev server or build to verify there are no compile errors before reporting done. To keep context short, always prefer targeted tools: codegraph MCP tools for symbol/caller lookup, `graphify query` if graphify-out/graph.json exists, `rg` over grep, `fd` over find. Read only the specific lines you need.",
       "permission": {
+        "question": "deny",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
         "edit": "ask",
         "bash": {
           "*": "ask"
@@ -480,6 +524,11 @@
       "model": "llamaswap/qwen3-moe",
       "prompt": "You are a technical writing specialist. You write and edit prose: README files, documentation, changelogs, commit messages, docstrings, inline comments, API descriptions, and any other written content. Adapt tone and detail level to the audience — terse for commit messages, thorough for README and API docs. For docstrings and comments, explain the why, not the what. Read existing files for style and context before writing so your output fits the surrounding material. Use `rg` or `fd` to find relevant examples in the codebase rather than reading files wholesale.",
       "permission": {
+        "question": "deny",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
         "edit": "ask",
         "bash": {
           "*": "ask"
@@ -530,6 +579,101 @@
     "vision": {
       "mode": "subagent",
       "hidden": true
+    },
+    "explore": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/fastcontext-4b",
+      "permission": {
+        "question": "deny",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "edit": "deny",
+        "write": "deny",
+        "bash": "deny",
+        "task": "deny",
+        "webfetch": "deny",
+        "mcp": "allow"
+      }
+    },
+    "step-planner": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-coder-large",
+      "permission": {
+        "question": "deny",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "task": "allow",
+        "edit": "deny",
+        "write": "deny",
+        "bash": "deny",
+        "todowrite": "deny",
+        "webfetch": "deny",
+        "mcp": "deny"
+      }
+    },
+    "step-reviewer": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-coder-large",
+      "permission": {
+        "question": "deny",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "bash": {
+          "*": "deny",
+          "rg *": "allow",
+          "fd *": "allow"
+        },
+        "task": "deny",
+        "edit": "deny",
+        "write": "deny",
+        "todowrite": "deny",
+        "webfetch": "allow",
+        "mcp": "allow",
+        "external_directory": "allow"
+      }
+    },
+    "step-orchestrator": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-coder-large",
+      "permission": {
+        "question": "deny",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
+        "task": "allow",
+        "edit": "deny",
+        "write": "deny",
+        "bash": "deny",
+        "read": "deny",
+        "glob": "deny",
+        "grep": "deny",
+        "list": "deny",
+        "webfetch": "deny",
+        "mcp": "deny"
+      }
     }
   }
 }

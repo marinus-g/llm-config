@@ -55,13 +55,13 @@
             "output": 8192
           }
         },
-      "qwen3-coder-large": {
-        "name": "Qwen3.6 27B (large context)",
-        "limit": {
-          "context": 196608,
-          "output": 8192
-        }
-      },
+        "qwen3-coder-large": {
+          "name": "Qwen3.6 27B (large context)",
+          "limit": {
+            "context": 196608,
+            "output": 8192
+          }
+        },
         "qwen3-vl": {
           "name": "Qwen3.6 27B VL (vision)",
           "attachment": true,
@@ -88,6 +88,20 @@
           "limit": {
             "context": 32768,
             "output": 8192
+          }
+        },
+        "gemma3-vl-cpu": {
+          "name": "Gemma 3 4B VL (CPU)",
+          "attachment": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ]
+          },
+          "limit": {
+            "context": 8192,
+            "output": 512
           }
         },
         "qwopus-coder-q6": {
@@ -172,6 +186,13 @@
           "limit": {
             "context": 196608,
             "output": 8192
+          }
+        },
+        "fastcontext-4b": {
+          "name": "FastContext 4B RL (repo explorer)",
+          "limit": {
+            "context": 131072,
+            "output": 4096
           }
         }
       }
@@ -259,7 +280,12 @@
     "bash": {
       "*": "ask"
     },
-    "edit": "ask"
+    "edit": "ask",
+    "workflow_control": "deny",
+    "workflow_verify": "deny",
+    "workflow_commit": "deny",
+    "workflow_handoff": "deny",
+    "workflow_create": "deny"
   },
   "plugin": [
     "opencode-power-pack@git+https://github.com/waybarrios/opencode-power-pack.git",
@@ -267,12 +293,15 @@
     "./plugin/notify.js",
     "./plugin/context-guard.js",
     "./plugin/bash-guard.js",
-    "./plugin/agent-mode-override.js",
+    "./plugin/model-override.js",
     "./plugin/orchestrator-no-edit.js",
     "./plugin/plan-no-jetbrains-write.js",
     "./plugin/tool-loop-guard.js",
     "./plugin/llama-swap-gpu.js",
-    "./plugin/goal.js"
+    "./plugin/see-image.js",
+    "./plugin/goal.js",
+    "./plugin/workflow.js",
+    "./plugin/agent-mode-override.js"
   ],
   "agent": {
     "build": {
@@ -294,7 +323,9 @@
         "write": "deny",
         "task": "deny",
         "todowrite": "deny",
-        "bash": { "*": "ask" },
+        "bash": {
+          "*": "ask"
+        },
         "read": "allow",
         "glob": "allow",
         "grep": "allow",
@@ -312,6 +343,11 @@
         "bash": "deny",
         "task": "allow",
         "question": "allow",
+        "workflow_control": "allow",
+        "workflow_verify": "allow",
+        "workflow_commit": "allow",
+        "workflow_handoff": "allow",
+        "workflow_create": "allow",
         "todowrite": "deny",
         "read": "deny",
         "glob": "deny",
@@ -387,7 +423,7 @@
         "mcp": "allow",
         "external_directory": "allow"
       },
-      "prompt": "You are an expert Java code reviewer specialising in complexity, design, and correctness. You are only invoked for files, classes, or methods that have already been flagged as complex by the code-reviewer agent. Perform a deep review covering: algorithmic complexity (time/space), design patterns (correct or missing use), SOLID violations, concurrency hazards (race conditions, improper synchronisation, deadlock potential), error-handling gaps (swallowed exceptions, missing finally/try-with-resources), JVM-specific behaviour (autoboxing pitfalls, finalizer misuse, classloader leaks), and non-obvious edge cases. For each finding state: location (file + method), severity (critical/major/minor), a concrete explanation of the risk, and a specific fix. Do not repeat surface-level issues already catchable by a linter — focus only on what requires deep understanding of the code semantics. To keep context short, always prefer targeted tools: codegraph MCP tools for symbol/caller lookup, `rg` over grep, `fd` over find. Read only the specific lines you need."
+      "prompt": "You are an expert Java code reviewer specialising in complexity, design, and correctness. You are only invoked for files, classes, or methods that have already been flagged as complex by the code-reviewer agent. Perform a deep review covering: algorithmic complexity (time/space), design patterns (correct or missing use), SOLID violations, concurrency hazards (race conditions, improper synchronisation, deadlock potential), error-handling gaps (swallowed exceptions, missing finally/try-with-resources), JVM-specific behaviour (autoboxing pitfalls, finalizer misuse, classloader leaks), and non-obvious edge cases. For each finding state: location (file + method), severity (critical/major/minor), a concrete explanation of the risk, and a specific fix. Do not repeat surface-level issues already catchable by a linter \u2014 focus only on what requires deep understanding of the code semantics. To keep context short, always prefer targeted tools: codegraph MCP tools for symbol/caller lookup, `rg` over grep, `fd` over find. Read only the specific lines you need."
     },
     "obsidian-helper": {
       "mode": "subagent",
@@ -409,7 +445,7 @@
       "mode": "subagent",
       "hidden": true,
       "model": "llamaswap/qwen3-moe",
-      "prompt": "You are a deep Java problem solver. You are called exclusively for hard, well-scoped problems that have already stumped the primary developer agent. You receive a precise brief containing: the exact method or class under scrutiny, the invariant or contract being violated, all relevant interfaces and type signatures, and a clear description of the failure mode or design conflict. You do not navigate the codebase — everything you need is in the brief. Your job is to reason deeply: identify the root cause, consider algorithmic and design alternatives, reason about JVM behaviour (memory model, happens-before, autoboxing, type erasure, classloader), and produce a concrete, correct solution with a short explanation of why it works. If the brief is missing critical information, state exactly what is needed rather than guessing. Be concise — no preamble, no restating the problem.",
+      "prompt": "You are a deep Java problem solver. You are called exclusively for hard, well-scoped problems that have already stumped the primary developer agent. You receive a precise brief containing: the exact method or class under scrutiny, the invariant or contract being violated, all relevant interfaces and type signatures, and a clear description of the failure mode or design conflict. You do not navigate the codebase \u2014 everything you need is in the brief. Your job is to reason deeply: identify the root cause, consider algorithmic and design alternatives, reason about JVM behaviour (memory model, happens-before, autoboxing, type erasure, classloader), and produce a concrete, correct solution with a short explanation of why it works. If the brief is missing critical information, state exactly what is needed rather than guessing. Be concise \u2014 no preamble, no restating the problem.",
       "permission": {
         "edit": "ask",
         "bash": {
@@ -425,7 +461,7 @@
       "mode": "subagent",
       "hidden": true,
       "model": "llamaswap/qwen3-coder-mid-q6",
-      "prompt": "You are an expert Java developer. You implement features, fix bugs, refactor code, and navigate the codebase using available tools. Apply Java best practices: correct use of generics, concurrency primitives, exception handling, and resource management. Prefer targeted tools: codegraph MCP for symbol lookup, `rg` over grep, `fd` over find — read only the lines you need. When you hit a problem that is genuinely hard — a subtle concurrency hazard, a deep algorithmic issue, a tricky JVM behaviour, or a design conflict with no obvious resolution — do not guess. Instead, delegate to the `java-hard-solver` agent with a precise brief that includes: (1) the exact method or class, (2) the invariant or contract being violated, (3) all relevant interfaces and type signatures copied verbatim, and (4) a clear one-paragraph description of the failure mode. Apply the solution it returns, then continue. If the task requires reading many large files simultaneously or the context will clearly exceed 32k tokens (large refactors spanning many classes, full-module migrations, analysis of many files at once), delegate to `java-expert-dev-large-context` instead.",
+      "prompt": "You are an expert Java developer. You implement features, fix bugs, refactor code, and navigate the codebase using available tools. Apply Java best practices: correct use of generics, concurrency primitives, exception handling, and resource management. Prefer targeted tools: codegraph MCP for symbol lookup, `rg` over grep, `fd` over find \u2014 read only the lines you need. When you hit a problem that is genuinely hard \u2014 a subtle concurrency hazard, a deep algorithmic issue, a tricky JVM behaviour, or a design conflict with no obvious resolution \u2014 do not guess. Instead, delegate to the `java-hard-solver` agent with a precise brief that includes: (1) the exact method or class, (2) the invariant or contract being violated, (3) all relevant interfaces and type signatures copied verbatim, and (4) a clear one-paragraph description of the failure mode. Apply the solution it returns, then continue. If the task requires reading many large files simultaneously or the context will clearly exceed 32k tokens (large refactors spanning many classes, full-module migrations, analysis of many files at once), delegate to `java-expert-dev-large-context` instead.",
       "permission": {
         "edit": "ask",
         "bash": {
@@ -444,6 +480,11 @@
       "hidden": true,
       "model": "llamaswap/qwopus-coder-large-q6",
       "permission": {
+        "question": "deny",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
         "edit": "ask",
         "bash": {
           "*": "ask"
@@ -460,8 +501,13 @@
       "mode": "subagent",
       "hidden": true,
       "model": "llamaswap/qwen3-coder-mid-q6",
-      "prompt": "You are a frontend implementation specialist covering React, Next.js (App Router and Pages Router), TypeScript, CSS, and Tailwind CSS. You receive delegated tasks from the orchestrator and carry them out: building components, implementing hooks, handling routing and server/client component boundaries, writing responsive Tailwind layouts, and managing CSS modules or global styles. Apply React best practices — composition over inheritance, correct use of useEffect dependencies, memoisation only where it demonstrably helps. For Next.js: prefer server components by default, use 'use client' only when necessary, handle metadata, loading, and error boundaries correctly. Run the dev server or build to verify there are no compile errors before reporting done. To keep context short, always prefer targeted tools: codegraph MCP tools for symbol/caller lookup, `graphify query` if graphify-out/graph.json exists, `rg` over grep, `fd` over find. Read only the specific lines you need.",
+      "prompt": "You are a frontend implementation specialist covering React, Next.js (App Router and Pages Router), TypeScript, CSS, and Tailwind CSS. You receive delegated tasks from the orchestrator and carry them out: building components, implementing hooks, handling routing and server/client component boundaries, writing responsive Tailwind layouts, and managing CSS modules or global styles. Apply React best practices \u2014 composition over inheritance, correct use of useEffect dependencies, memoisation only where it demonstrably helps. For Next.js: prefer server components by default, use 'use client' only when necessary, handle metadata, loading, and error boundaries correctly. Run the dev server or build to verify there are no compile errors before reporting done. To keep context short, always prefer targeted tools: codegraph MCP tools for symbol/caller lookup, `graphify query` if graphify-out/graph.json exists, `rg` over grep, `fd` over find. Read only the specific lines you need.",
       "permission": {
+        "question": "deny",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
         "edit": "ask",
         "bash": {
           "*": "ask"
@@ -478,8 +524,13 @@
       "mode": "subagent",
       "hidden": true,
       "model": "llamaswap/qwen3-moe",
-      "prompt": "You are a technical writing specialist. You write and edit prose: README files, documentation, changelogs, commit messages, docstrings, inline comments, API descriptions, and any other written content. Adapt tone and detail level to the audience — terse for commit messages, thorough for README and API docs. For docstrings and comments, explain the why, not the what. Read existing files for style and context before writing so your output fits the surrounding material. Use `rg` or `fd` to find relevant examples in the codebase rather than reading files wholesale.",
+      "prompt": "You are a technical writing specialist. You write and edit prose: README files, documentation, changelogs, commit messages, docstrings, inline comments, API descriptions, and any other written content. Adapt tone and detail level to the audience \u2014 terse for commit messages, thorough for README and API docs. For docstrings and comments, explain the why, not the what. Read existing files for style and context before writing so your output fits the surrounding material. Use `rg` or `fd` to find relevant examples in the codebase rather than reading files wholesale.",
       "permission": {
+        "question": "deny",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
         "edit": "ask",
         "bash": {
           "*": "ask"
@@ -495,7 +546,7 @@
       "mode": "subagent",
       "hidden": true,
       "model": "llamaswap/qwen3-coder-mid-q6",
-      "prompt": "You are a testing specialist. You receive delegated tasks from the orchestrator and write or fix tests across any language or framework (Jest, Vitest, JUnit, Playwright, Cypress, pytest, etc.). Follow arrange-act-assert structure. Mock at the right boundary — prefer real implementations over mocks unless I/O or non-determinism is involved. Aim for tests that document behaviour, not implementation details. For integration and e2e tests, prefer testing user-visible outcomes. Always run the test suite after writing tests and report pass/fail counts and any remaining failures. To keep context short, always prefer targeted tools: codegraph MCP tools for symbol/caller lookup, `graphify query` if graphify-out/graph.json exists, `rg` over grep, `fd` over find. Read only the specific lines you need.",
+      "prompt": "You are a testing specialist. You receive delegated tasks from the orchestrator and write or fix tests across any language or framework (Jest, Vitest, JUnit, Playwright, Cypress, pytest, etc.). Follow arrange-act-assert structure. Mock at the right boundary \u2014 prefer real implementations over mocks unless I/O or non-determinism is involved. Aim for tests that document behaviour, not implementation details. For integration and e2e tests, prefer testing user-visible outcomes. Always run the test suite after writing tests and report pass/fail counts and any remaining failures. To keep context short, always prefer targeted tools: codegraph MCP tools for symbol/caller lookup, `graphify query` if graphify-out/graph.json exists, `rg` over grep, `fd` over find. Read only the specific lines you need.",
       "permission": {
         "edit": "ask",
         "bash": {
@@ -513,7 +564,7 @@
       "mode": "subagent",
       "hidden": true,
       "model": "llamaswap/qwen3-coder-large",
-      "prompt": "You are an expert Java developer operating in large-context mode (up to 145k tokens). You are called when the task requires reading many large files simultaneously, spanning a full-module migration, or any refactor where context clearly exceeds 32k tokens. Otherwise your behaviour is identical to java-expert-dev: implement features, fix bugs, refactor code, and navigate the codebase using available tools. Apply Java best practices: correct use of generics, concurrency primitives, exception handling, and resource management. Prefer targeted tools: codegraph MCP for symbol lookup, `rg` over grep, `fd` over find — read only the lines you need. When you hit a genuinely hard problem, delegate to `java-hard-solver` with a precise brief.",
+      "prompt": "You are an expert Java developer operating in large-context mode (up to 145k tokens). You are called when the task requires reading many large files simultaneously, spanning a full-module migration, or any refactor where context clearly exceeds 32k tokens. Otherwise your behaviour is identical to java-expert-dev: implement features, fix bugs, refactor code, and navigate the codebase using available tools. Apply Java best practices: correct use of generics, concurrency primitives, exception handling, and resource management. Prefer targeted tools: codegraph MCP for symbol lookup, `rg` over grep, `fd` over find \u2014 read only the lines you need. When you hit a genuinely hard problem, delegate to `java-hard-solver` with a precise brief.",
       "permission": {
         "edit": "ask",
         "bash": {
@@ -530,6 +581,101 @@
     "vision": {
       "mode": "subagent",
       "hidden": true
+    },
+    "explore": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/fastcontext-4b",
+      "permission": {
+        "question": "deny",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "edit": "deny",
+        "write": "deny",
+        "bash": "deny",
+        "task": "deny",
+        "webfetch": "deny",
+        "mcp": "allow"
+      }
+    },
+    "step-planner": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-coder-large",
+      "permission": {
+        "question": "deny",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "task": "allow",
+        "edit": "deny",
+        "write": "deny",
+        "bash": "deny",
+        "todowrite": "deny",
+        "webfetch": "deny",
+        "mcp": "deny"
+      }
+    },
+    "step-reviewer": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-coder-large",
+      "permission": {
+        "question": "deny",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "bash": {
+          "*": "deny",
+          "rg *": "allow",
+          "fd *": "allow"
+        },
+        "task": "deny",
+        "edit": "deny",
+        "write": "deny",
+        "todowrite": "deny",
+        "webfetch": "allow",
+        "mcp": "allow",
+        "external_directory": "allow"
+      }
+    },
+    "step-orchestrator": {
+      "mode": "subagent",
+      "hidden": true,
+      "model": "llamaswap/qwen3-coder-large",
+      "permission": {
+        "question": "deny",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
+        "task": "allow",
+        "edit": "deny",
+        "write": "deny",
+        "bash": "deny",
+        "read": "deny",
+        "glob": "deny",
+        "grep": "deny",
+        "list": "deny",
+        "webfetch": "deny",
+        "mcp": "deny"
+      }
     }
   }
 }

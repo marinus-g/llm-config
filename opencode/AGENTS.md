@@ -2,7 +2,7 @@
 
 | Trigger | Action |
 |---|---|
-| Image / screenshot / diagram attached or referenced (1 or more) | Delegate to `vision` — state how many images. Vision handles its own clipboard fallback via `system-admin`. Full: `vision-image-workflow.md` |
+| Image / screenshot / diagram attached or referenced (1 or more) | Call the **`see_image` tool** immediately — pass the filename from the error or `"clipboard"`. For deep/exhaustive analysis only: delegate to `vision` subagent. Full: `vision-image-workflow.md` |
 | Hyprland config change | `luac -p <file>` → `hyprctl reload` → `hyprctl configerrors`. See §Hyprland |
 | Need a symbol / caller / impact | Use `codegraph_*`, not grep. See §CodeGraph |
 | Something worth saving to vault | Ask the user first. See §AI Memory |
@@ -29,15 +29,14 @@ When you discover something worth remembering:
 
 ### Attachments
 
-You CANNOT see images natively. When any image/screenshot/diagram is present:
+You CANNOT see images natively. When any image/screenshot/diagram is present — or when you get a "this model does not support image input" / "Cannot read …png" error — call the **`see_image` tool** immediately:
 
-1. Task → `vision` — preprompt must state how many images and "use your clipboard recovery if you can't see them"
-2. Vision handles clipboard fallback itself (delegates to `system-admin` for `wl-paste`/`cliphist`)
-3. Act on the description (or delegate to specialist)
+1. `see_image` with `filePath` = filename from error (e.g. `"Screenshot.png"`) or `"clipboard"` if no filename.
+2. Optionally set `question` to the user's specific ask.
+3. The tool resolves from the opencode DB, filesystem, or Wayland clipboard; calls `qwen3-moe-vl` (GPU) with `gemma3-vl-cpu` (CPU) as automatic fallback.
+4. Act on the returned description, or delegate to the right specialist.
 
-Multiple images: attach all before sending; vision recovers them in order via `cliphist` if stripped.
-
-Full preprompt examples: `~/.config/opencode/vision-image-workflow.md`
+For deep/exhaustive analysis (many images, cross-referencing, multi-step OCR): delegate to the `vision` subagent using the preprompt examples in `~/.config/opencode/vision-image-workflow.md`.
 
 ---
 
@@ -81,7 +80,7 @@ Use the `orchestrator` primary agent. It routes tasks to specialized subagents:
 | `java-expert-dev` | Java, Maven, Gradle, Spring Boot |
 | `java-hard-solver` | Hard Java problems delegated from `java-expert-dev` only |
 | `general-dev` | Any other programming task |
-| `vision` | Image analysis, screenshots, diagrams, OCR (local VL model) |
+| `vision` | Deep/exhaustive image analysis (subagent — use `see_image` tool for the common case) |
 
 ## Hyprland Changes — Always Validate
 

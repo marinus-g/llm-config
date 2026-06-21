@@ -25,7 +25,7 @@
  *   that is (or recently was) a /loop session, to avoid duplicate notifications.
  */
 
-import { loops, recentlyCompleted } from "./loop.js";
+import { loops, recentlyCompleted } from "../lib/loop-state.js";
 
 /** @type {Map<string, ReturnType<typeof setTimeout>>} */
 const idleTimers = new Map();

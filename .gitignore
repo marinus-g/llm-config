@@ -1,8 +1,23 @@
+# Dependencies & cache
 node_modules/
 __pycache__/
 *.pyc
-.git/
 .cache/
-*.bak*
+
+# Git & runtime
+.git/
 *.log
 *.pid
+
+# OpenCode directories
+skills-disabled/
+tui/
+test/
+tests/
+lib/
+
+# OpenCode package lock
+package-lock.json
+
+# Misc
+*.bak*

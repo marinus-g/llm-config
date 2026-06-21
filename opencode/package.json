@@ -1,6 +1,9 @@
 {
   "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
   "dependencies": {
-    "@opencode-ai/plugin": "1.14.31"
+    "@opencode-ai/plugin": "1.16.2"
   }
 }

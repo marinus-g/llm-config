@@ -25,15 +25,7 @@
  *   - /loop-stop → immediate cancellation.
  */
 
-/** @type {Map<string, { prompt: string, remaining: number, max: number, inFlight: boolean, running: boolean }>} */
-export const loops = new Map();
-
-/**
- * SessionIDs of loops that finished within the last 6 seconds.
- * notify.js imports this to suppress its generic "Turn finished" ping
- * when loop.js already fired a "Loop done" notification.
- */
-export const recentlyCompleted = new Set();
+import { loops, recentlyCompleted } from "../lib/loop-state.js";
 
 // ---------------------------------------------------------------------------
 // Loop summary helpers

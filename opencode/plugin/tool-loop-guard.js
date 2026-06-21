@@ -2,17 +2,20 @@
  * Tool loop guard for OpenCode
  *
  * Blocks runaway sessions that repeatedly execute the same tool with the same
- * arguments. This is intentionally session-local and conservative: legitimate
- * retries can happen once or twice, but the third identical call is stopped.
+ * arguments. Circuit breakers are per-tool: a loop in one tool only blocks that
+ * tool, not unrelated ones. Legitimate retries can happen once or twice, but
+ * the third identical call is stopped.
  */
 
 const MAX_IDENTICAL_CALLS = 2;
 const MAX_IDENTICAL_PERMISSION_ASKS = 2;
-const MAX_FAILURE_STREAK = 3;
-const MAX_RECENT_CALLS = 30;
-const RECOVERY_TOOLS = new Set(["task", "question", "invalid"]);
+const REPEAT_WINDOW_MS = 90_000; // identical calls only count toward a loop if within this gap
+const RECOVERY_TOOLS = new Set([
+  "task", "question", "invalid",
+  "workflow_control", "workflow_verify", "workflow_commit",
+]);
 
-/** @type {Map<string, { recent: string[], counts: Map<string, number>, failureStreak: number, circuitOpen: boolean, circuitReason: string | null }>} */
+/** @type {Map<string, { counts: Map<string, { count: number, lastSeen: number }>, failureStreak: number, circuitsOpen: Map<string, { open: boolean, reason: string | null, blockedArgs: Set<string> }> }>} */
 const sessions = new Map();
 
 function stableStringify(value) {
@@ -26,11 +29,9 @@ function getSession(sessionID) {
   let state = sessions.get(sessionID);
   if (!state) {
     state = {
-      recent: [],
       counts: new Map(),
       failureStreak: 0,
-      circuitOpen: false,
-      circuitReason: null,
+      circuitsOpen: new Map(),
     };
     sessions.set(sessionID, state);
   }
@@ -53,33 +54,49 @@ function permissionKey(input) {
 
 function track(sessionID, key) {
   const state = getSession(sessionID);
-  const count = (state.counts.get(key) ?? 0) + 1;
+  const now = Date.now();
+  const prev = state.counts.get(key);
+  const withinWindow = prev !== undefined && now - prev.lastSeen <= REPEAT_WINDOW_MS;
+  const count = withinWindow ? prev.count + 1 : 1;
+  state.counts.set(key, { count, lastSeen: now });
 
-  state.counts.set(key, count);
-  state.recent.push(key);
-
-  while (state.recent.length > MAX_RECENT_CALLS) {
-    const old = state.recent.shift();
-    if (!old) break;
-    const oldCount = (state.counts.get(old) ?? 1) - 1;
-    if (oldCount <= 0) state.counts.delete(old);
-    else state.counts.set(old, oldCount);
+  // Evict stale entries to bound memory usage.
+  for (const [k, v] of state.counts) {
+    if (now - v.lastSeen > REPEAT_WINDOW_MS) state.counts.delete(k);
   }
 
   return count;
 }
 
-function openCircuit(sessionID, reason) {
+function openCircuit(sessionID, tool, reason, blockedKey) {
   const state = getSession(sessionID);
-  state.circuitOpen = true;
-  state.circuitReason = reason;
+  let circuit = state.circuitsOpen.get(tool);
+  if (!circuit) {
+    circuit = { open: false, reason: null, blockedArgs: new Set() };
+    state.circuitsOpen.set(tool, circuit);
+  }
+  circuit.open = true;
+  circuit.reason = reason;
+  if (blockedKey) circuit.blockedArgs.add(blockedKey);
 }
 
-function closeCircuit(sessionID) {
+function clearToolCircuit(sessionID, tool) {
   const state = getSession(sessionID);
-  state.circuitOpen = false;
-  state.circuitReason = null;
-  state.failureStreak = 0;
+  state.circuitsOpen.delete(tool);
+  // Also reset the call counts for this tool so the next invocation
+  // is treated as fresh rather than immediately re-hitting the threshold.
+  for (const key of state.counts.keys()) {
+    if (key.startsWith(`tool:${tool}:`)) state.counts.delete(key);
+  }
+}
+
+function clearAllCircuits(sessionID) {
+  const state = getSession(sessionID);
+  state.circuitsOpen.clear();
+  // Reset all tool call counts so every tool starts fresh.
+  for (const key of state.counts.keys()) {
+    if (key.startsWith("tool:")) state.counts.delete(key);
+  }
 }
 
 function recoveryMessage(reason) {
@@ -103,34 +120,57 @@ export const server = async ({ client }) => {
 
       if (count > MAX_IDENTICAL_PERMISSION_ASKS) {
         output.status = "deny";
-        openCircuit(input.sessionID, `${input.type} permission was requested repeatedly.`);
+        openCircuit(
+          input.sessionID,
+          input.type,
+          `${input.type} permission was requested repeatedly.`,
+        );
         toast(`Permission loop blocked: ${input.type} repeated ${count} times`);
       }
     },
 
     "tool.execute.before": async (input, output) => {
       const state = getSession(input.sessionID);
-      if (state.circuitOpen && !RECOVERY_TOOLS.has(input.tool)) {
-        toast(`Tool circuit open: blocked ${input.tool}; use task/question/final response`);
-        throw new Error(recoveryMessage(state.circuitReason ?? "A repeated tool loop was detected."));
+      const { tool } = input;
+
+      // Recovery tools clear ALL circuits
+      if (RECOVERY_TOOLS.has(tool)) {
+        clearAllCircuits(input.sessionID);
+        return;
       }
 
-      if (state.circuitOpen && RECOVERY_TOOLS.has(input.tool)) {
-        closeCircuit(input.sessionID);
+      // Check if THIS tool's circuit is open
+      const circuit = state.circuitsOpen.get(tool);
+      if (circuit && circuit.open) {
+        const key = callKey(tool, output.args);
+        const argHash = stableStringify(output.args ?? {});
+
+        if (circuit.blockedArgs.has(argHash)) {
+          toast(`Tool circuit open: blocked ${tool}; use task/question/final response`);
+          throw new Error(
+            recoveryMessage(circuit.reason ?? "A repeated tool loop was detected."),
+          );
+        }
+
+        // Circuit is open but args are different → allow through and clear this tool's circuit
+        clearToolCircuit(input.sessionID, tool);
       }
 
-      const key = `tool:${callKey(input.tool, output.args)}`;
+      const key = `tool:${callKey(tool, output.args)}`;
       const count = track(input.sessionID, key);
 
       if (count > MAX_IDENTICAL_CALLS) {
         const preview = stableStringify(output.args ?? {}).slice(0, 240);
+        const argHash = stableStringify(output.args ?? {});
         openCircuit(
           input.sessionID,
-          `${input.tool} was called repeatedly with the same arguments: ${preview}`,
+          tool,
+          `${tool} was called repeatedly with the same arguments: ${preview}`,
+          argHash,
         );
-        toast(`Tool loop blocked: ${input.tool} repeated ${count} times`);
+        toast(`Tool loop blocked: ${tool} repeated ${count} times`);
         throw new Error(recoveryMessage(
-          `Refused repeated identical tool call (${input.tool}) after ` +
+          `Refused repeated identical tool call (${tool}) after ` +
             `${MAX_IDENTICAL_CALLS} completed attempt(s). Arguments: ${preview}`,
         ));
       }
@@ -138,19 +178,9 @@ export const server = async ({ client }) => {
 
     "tool.execute.after": async (input, output) => {
       const state = getSession(input.sessionID);
-      const status = output?.state?.status ?? output?.status ?? null;
-      if (status === "error") {
-        state.failureStreak += 1;
-        if (state.failureStreak >= MAX_FAILURE_STREAK) {
-          openCircuit(
-            input.sessionID,
-            `${MAX_FAILURE_STREAK} consecutive tool errors were observed.`,
-          );
-          toast(`Tool failure circuit opened after ${state.failureStreak} errors`);
-        }
-        return;
-      }
 
+      // Reset failure streak on success and clear that tool's circuit
+      clearToolCircuit(input.sessionID, input.tool);
       state.failureStreak = 0;
     },
 

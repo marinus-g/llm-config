@@ -384,11 +384,60 @@ models:
       --no-warmup
       --api-key ${env.LLAMA_API_KEY}
 
+  # ─────────────────────────────────────────────────────────────
+  # FastContext 4B RL — repo-exploration subagent
+  # Microsoft FastContext-1.0-4B-RL: purpose-built for codebase exploration.
+  # READ/GLOB/GREP only; returns compact path:line evidence. 4B params so it
+  # loads/unloads fast alongside the main coder. 131072 ctx (model supports 262K;
+  # keeping 128K to stay well within VRAM budget on the 5090).
+  # ─────────────────────────────────────────────────────────────
+  "fastcontext-4b":
+    name: "FastContext 4B RL (repo explorer)"
+    description: "Microsoft FastContext-1.0-4B-RL — 4 parallel slots, 96K ctx/slot, evicts primary GPU model"
+    ttl: 300  # unload after 5 min idle
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${MODELS_DIR}/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
+      -ngl 99
+      -c 393216
+      -np 4
+      -n 4096
+      -b 2048
+      -ub 512
+      --cache-type-k q4_0
+      --cache-type-v q4_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --api-key ${env.LLAMA_API_KEY}
+
   # =============================================================================
   # CPU shadow variants — same weights, -ngl 0 (all layers on CPU/RAM).
   # Used as secondary models when a GPU model is already loaded.
   # Short TTL (120 s): once the router promotes back to GPU, these unload quickly.
   # =============================================================================
+
+  "fastcontext-4b-cpu":
+    name: "FastContext 4B RL (CPU fallback)"
+    description: "CPU fallback for explore agent — 4 parallel slots, 96K ctx/slot, all layers on CPU"
+    ttl: 120
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${MODELS_DIR}/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
+      -ngl 0
+      -c 393216
+      -np 4
+      -n 4096
+      -b 512
+      -ub 256
+      --cache-type-k q4_0
+      --cache-type-v q4_0
+      --jinja
+      --no-warmup
+      --api-key ${env.LLAMA_API_KEY}
 
   "qwen3-coder-cpu":
     name: "Qwen3 1.7B (coder CPU fallback)"
@@ -532,6 +581,26 @@ models:
       --no-warmup
       --api-key ${env.LLAMA_API_KEY}
 
+  # Gemma 3 4B — small fast CPU vision model used as fallback by the see_image plugin
+  # when qwen3-moe-vl (GPU) is busy or unavailable. Absolute GGUF paths because this
+  # model lives in the HF cache, not under ${models}.
+  "gemma3-vl-cpu":
+    name: "Gemma 3 4B VL (CPU)"
+    description: "Small fast CPU vision — see_image fallback when GPU is occupied"
+    ttl: 300
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${MODELS_DIR}/bartowski/google_gemma-3-4b-it-GGUF/blobs/google_gemma-3-4b-it-Q4_K_M.gguf
+      --mmproj ${MODELS_DIR}/bartowski/google_gemma-3-4b-it-GGUF/blobs/mmproj-google_gemma-3-4b-it-f16.gguf
+      -ngl 0
+      --no-mmproj-offload
+      -c 8192
+      -n 512
+      --jinja
+      --no-warmup
+      --api-key ${env.LLAMA_API_KEY}
+
 # =============================================================================
 # matrix: concurrent model combinations
 # GPU models can coexist with CPU shadow models (one of each at a time).
@@ -552,6 +621,10 @@ matrix:
     q:   qwopus-coder-q6
     qm:  qwopus-coder-mid-q6
     ql:  qwopus-coder-large-q6
+    # FastContext exploration model (4B — evicts main GPU model when requested;
+    # no coexistence set, so loading it unloads whatever is resident)
+    fc:  fastcontext-4b
+    fcc: fastcontext-4b-cpu
     # CPU shadow models
     cc:  qwen3-coder-cpu
     cmc: qwen3-coder-mid-cpu
@@ -560,8 +633,14 @@ matrix:
     mc:  qwen3-moe-cpu
     mlc: qwen3-moe-large-cpu
     mvc: qwen3-moe-vl-cpu
+    gvc: gemma3-vl-cpu
   sets:
     # Any single Qwen GPU model may run alongside any single CPU shadow model.
     # Qwopus profiles intentionally run alone so stale CPU shadows do not stay
     # loaded while opencode swaps between Qwopus context sizes.
-    gpu_cpu: "(c | cm | cl | v | m | ml | mv) & (cc | cmc | clc | vc | mc | mlc | mvc)"
+    gpu_cpu: "(c | cm | cl | v | m | ml | mv) & (cc | cmc | clc | vc | mc | mlc | mvc | gvc | fcc)"
+    # fcc (fastcontext-4b-cpu) is in gpu_cpu above so it can coexist with a GPU primary as
+    # a manual shadow, but fastcontext-4b (GPU) is intentionally in NO coexistence set:
+    # loading it evicts whatever GPU model is resident, giving FastContext the full card
+    # (~30 GB free after eviction) for 4 slots × 96K ctx (q4_0 KV ≈ 14 GB + 2.5 GB weights).
+    # The router retries on fastcontext-4b-cpu if the GPU load fails (safety net only).
