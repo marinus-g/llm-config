@@ -18,6 +18,7 @@ ttl: 600
 macros:
   llama: ~/work/llm/llama.cpp/build/bin/llama-server
   models: ~/.lmstudio/models/lmstudio-community
+  hf_cache: ~/.cache/huggingface/hub
 
 models:
   # ─────────────────────────────────────────────────────────────
@@ -293,7 +294,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ~/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -m ${models}/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
       -ngl 80
       -c 65536
       -np 1
@@ -331,7 +332,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ~/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -m ${models}/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
       -ngl 80
       -c 98304
       -np 1
@@ -369,7 +370,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ~/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -m ${models}/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
       -ngl 80
       -c 196608
       -np 1
@@ -398,7 +399,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ~/.lmstudio/models/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
+      -m ${models}/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
       -ngl 99
       -c 393216
       -np 4
@@ -426,7 +427,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ~/.lmstudio/models/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
+      -m ${models}/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
       -ngl 0
       -c 393216
       -np 4
@@ -591,8 +592,8 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ~/.cache/huggingface/hub/models--bartowski--google_gemma-3-4b-it-GGUF/blobs/google_gemma-3-4b-it-Q4_K_M.gguf
-      --mmproj ~/.cache/huggingface/hub/models--bartowski--google_gemma-3-4b-it-GGUF/blobs/mmproj-google_gemma-3-4b-it-f16.gguf
+      -m ${hf_cache}/models--bartowski--google_gemma-3-4b-it-GGUF/blobs/google_gemma-3-4b-it-Q4_K_M.gguf
+      --mmproj ${hf_cache}/models--bartowski--google_gemma-3-4b-it-GGUF/blobs/mmproj-google_gemma-3-4b-it-f16.gguf
       -ngl 0
       --no-mmproj-offload
       -c 8192

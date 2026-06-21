@@ -3,10 +3,15 @@
 # request the GPU counterpart so llama-swap loads it alongside.
 # The CPU model's short TTL (120 s) then lets it unload naturally.
 # Convention: CPU model IDs are the GPU model ID with "-cpu" appended.
+#
+# Environment variables (with defaults):
+#   PROMOTE_ENDPOINT  — router URL   (default: http://127.0.0.1:5099)
+#   PROMOTE_API_KEY   — Bearer token (default: llama-local)
+#   PROMOTE_INTERVAL  — poll seconds (default: 15)
 
-ENDPOINT="http://127.0.0.1:5099"
-API_KEY="llama-local"
-INTERVAL=15
+ENDPOINT="${PROMOTE_ENDPOINT:-http://127.0.0.1:5099}"
+API_KEY="${PROMOTE_API_KEY:-llama-local}"
+INTERVAL="${PROMOTE_INTERVAL:-15}"
 
 while true; do
     sleep "${INTERVAL}"
