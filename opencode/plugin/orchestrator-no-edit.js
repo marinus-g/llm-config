@@ -43,7 +43,7 @@ const READONLY_AGENTS = ["orchestrator", "plan"];
  *  is explicitly instructed to run directly in its own session. */
 const ORCHESTRATOR_ALLOWED_TOOLS = new Set([
   "task", "question", "invalid",
-  "workflow_control", "workflow_verify", "workflow_commit", "workflow_handoff",
+  "workflow_control", "workflow_verify", "workflow_commit", "workflow_handoff", "workflow_create",
 ]);
 
 /**

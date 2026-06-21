@@ -1,5 +1,6 @@
 ---
 description: "Create, drive, or recover a staged workflow. Usage: /workflow create|validate|start|list|attach|status|log|doctor|finish|recover|rewind|pause|resume|retry|confirm|skip|stop|reset|danger"
+agent: workflow-orchestrator
 ---
 
 Raw arguments:
@@ -38,7 +39,9 @@ workflow interactively in this conversation:
    to write it. If the user requests changes, apply them and repeat the summary
    and confirmation.
 7. Only after confirmation, call `workflow_create` exactly once with the path
-   and complete file contents. Return only its result. Do not start the workflow.
+   and complete file contents. The tool is authorized only by this explicit
+   `/workflow create` command, and a path supplied to the command is enforced.
+   Return only its result. Do not start the workflow.
 
 For every other first token, call `workflow_control` exactly once. Map the first
 token to `action` as described below.

@@ -186,27 +186,35 @@ function executePrompt(state, todo, retry = false) {
   const stepText = todoText(todo);
   const retryNote = retry ? " (This is a retry — previous verification failed.)" : "";
   const noCode = isNoCodeStep(todo);
+  const sourceGuidance = `Treat the snapshotted workflow source at ${state.sourcePath} as immutable. ` +
+    `Write any generated evidence or notes outside the workflow source tree, for example under ` +
+    `.docs/workflow-evidence/; do not place deliverables in .docs/ai-tasks or modify the workflow source snapshot. `;
   const delegateInstruction = noCode
     ? `Delegate this step to the \`step-planner\` subagent. This is a Context7 research step — ` +
-      `instruct the step-planner to query every required library with focused Context7 resolve and docs calls, ` +
+      `instruct the step-planner to dispatch a direct \`research\` child that queries every required library ` +
+      `with focused Context7 resolve and docs calls. Context7 calls made directly by the planner do not count. ` +
       `dispatch a \`step-orchestrator\` and documentation domain agent to record the actual results, then obtain a ` +
       `\`step-reviewer\` verdict. On review failure, it must run at most one corrective research/record/review pass without asking the user.`
     : `Delegate this step to the \`step-planner\` subagent. Pass it the full step text below and instruct it to ` +
       `explore, plan, dispatch a \`step-orchestrator\` to implement, and obtain a \`step-reviewer\` verdict.`;
   return `◈ Workflow ${retry ? "retry" : "execute"} — ${todo.id}${retryNote}\n\n` +
+    `Workflow id: \`${state.id}\`. TODO id: \`${todo.id}\`. Pass both identifiers to the step-planner, ` +
+    `which must pass them to the step-reviewer for its final \`workflow_review\` call. ` +
     `${delegateInstruction} Do not implement or review the step yourself. ` +
+    sourceGuidance +
     `For a \`todo_execute\` prompt the orchestrator dispatches only \`step-planner\` and must not spawn ` +
     `\`explore\`, \`step-orchestrator\`, \`step-reviewer\`, or any domain agent itself — the planner owns the whole sub-hierarchy.\n\n` +
-    `After the step-planner returns, you (the parent orchestrator) must:\n` +
-    `1. Inspect the first line of its result. Continue only when it is exactly \`STEP REVIEW: PASS\`. ` +
-    `If it is \`STEP REVIEW: FAIL\` or malformed, do not call workflow_verify; report the blocking findings and leave this TODO pending. ` +
-    `The workflow engine also validates the real child-session hierarchy and completed tool evidence; prose claims cannot satisfy it. ` +
+    `After the step-planner returns, treat its \`STEP REVIEW\` line as a summary only. ` +
+    `The workflow engine validates the typed reviewer verdict, real child-session hierarchy, and completed tool evidence; prose claims cannot satisfy it. ` +
     (todo.context7 === "required"
-      ? `2. Confirm that Context7 resolve-library-id and query-docs were called (or call them yourself if the step-planner did not). ` +
-        (todo.verify.length ? `3. Call workflow_verify for each verification command index (0 through ${todo.verify.length - 1}). ` : "")
+      ? `Confirm that a direct \`research\` child of the step-planner completed both Context7 ` +
+        `resolve-library-id and query-docs calls. Do not call those tools in this parent session; they will not count. ` +
+        (todo.verify.length ? `Call workflow_verify for each verification command index (0 through ${todo.verify.length - 1}); it is the authoritative gate. ` : "")
       : (todo.verify.length
-          ? `2. Call workflow_verify once for each command index (0 through ${todo.verify.length - 1}); do not run substitutes. `
+          ? `Call workflow_verify once for each command index (0 through ${todo.verify.length - 1}); it is the authoritative gate. Do not run substitutes. `
           : "")) +
+    // Fix 3: When there are no automated verify commands, make the prohibition explicit.
+    (!todo.verify.length ? `Do NOT call \`workflow_verify\` for this TODO — it has no automated verification command. ` : "") +
     (todo.manual.length ? "Manual verification will be requested separately by the workflow engine. " : "") +
     `Do not check the Markdown checkbox for this TODO.\n\n` +
     `## Step to delegate to step-planner\n\n${stepText}`;
@@ -251,12 +259,14 @@ export const server = async ({ client }) => {
   clearDestructiveApprovals();
   const repliedPermissionRequests = new Set();
   const commandReceipts = new Map();
+  const createAuthorizations = new Map();
   const COMMAND_RECEIPT_TTL_MS = 5 * 60 * 1000;
+  const CREATE_AUTHORIZATION_TTL_MS = 2 * 60 * 60 * 1000;
   const MAX_COMMAND_RECEIPTS = 20;
 
   async function refreshExecutionEvidence(state, sessionID, todo) {
     const since = state.reporting?.todoStartedAt ?? state.startedAt;
-    const root = await loadExecutionNode(client, { id: sessionID, agent: "orchestrator", time: { created: since } }, since);
+    const root = await loadExecutionNode(client, { id: sessionID, agent: "workflow-orchestrator", time: { created: since } }, since);
     const opts = { requireImplementation: true, requireContext7: todo?.context7 === "required" };
     state.executionEvidence = analyzeExecutionEvidence(root, opts);
     event(state, state.executionEvidence.ready ? "execution.evidence_ready" : "execution.evidence_incomplete",
@@ -298,6 +308,47 @@ export const server = async ({ client }) => {
 
   function clearCommandReceipts(sessionID) {
     commandReceipts.delete(sessionID);
+  }
+
+  function clearSessionTransientState(sessionID) {
+    clearCommandReceipts(sessionID);
+    createAuthorizations.delete(sessionID);
+  }
+
+  function workflowDestination(cwd, value) {
+    if (value === "~") return homedir();
+    if (value.startsWith("~/")) return join(homedir(), value.slice(2));
+    return resolve(cwd, value);
+  }
+
+  function workflowCreateCommandPath(parts) {
+    const value = parts.join(" ").trim();
+    const quoted = value.match(/^(["'])(.*)\1$/s);
+    return quoted ? quoted[2] : value;
+  }
+
+  async function authorizeWorkflowCreate(sessionID, path) {
+    await requirePrimaryWorkflowCaller(sessionID);
+    const session = (await client.session.get({ path: { id: sessionID } }))?.data;
+    const cwd = session?.directory ?? process.cwd();
+    createAuthorizations.set(sessionID, {
+      at: Date.now(),
+      destination: path ? workflowDestination(cwd, path) : null,
+    });
+  }
+
+  function requireWorkflowCreateAuthorization(sessionID, destination) {
+    const authorization = createAuthorizations.get(sessionID);
+    if (!authorization) {
+      throw new Error("workflow creation is not authorized; start with /workflow create [path]");
+    }
+    if (Date.now() - authorization.at > CREATE_AUTHORIZATION_TTL_MS) {
+      createAuthorizations.delete(sessionID);
+      throw new Error("workflow creation authorization expired; run /workflow create [path] again");
+    }
+    if (authorization.destination && authorization.destination !== destination) {
+      throw new Error(`workflow creation is authorized only for ${authorization.destination}; run /workflow create again to change it`);
+    }
   }
 
   async function dangerSessionFor(sessionID) {
@@ -395,12 +446,47 @@ export const server = async ({ client }) => {
     if (session?.parentID) {
       throw new Error("workflow phase tools may only be called by the primary orchestrator session");
     }
-    if (session?.agent && session.agent !== "orchestrator") {
-      throw new Error("workflow phase tools may only be called by the primary orchestrator agent");
+    const WORKFLOW_DRIVER_AGENTS = new Set(["orchestrator", "workflow-orchestrator"]);
+    if (session?.agent && !WORKFLOW_DRIVER_AGENTS.has(session.agent)) {
+      throw new Error("workflow phase tools may only be called by a primary workflow orchestrator agent");
     }
   }
 
-  function inject(sessionID, text, agent = "orchestrator", noReply = false) {
+  async function requireActiveStepReviewer(sessionID, workflowId, todoId) {
+    const state = loadWorkflow(workflowId);
+    if (!state || !["running", "paused"].includes(state.status)) throw new Error("workflow is not active");
+    const todo = currentTodo(state);
+    if (!todo || todo.id !== todoId) throw new Error(`TODO ${todoId} is not the active workflow TODO`);
+    if (!["todo_execute", "todo_verify"].includes(state.phase)) {
+      throw new Error(`workflow review is not allowed during phase ${state.phase}`);
+    }
+
+    const reviewer = (await client.session.get({ path: { id: sessionID } }))?.data;
+    const reviewerMessages = (await client.session.messages({ path: { id: sessionID } }))?.data ?? [];
+    if (sessionAgent(reviewer, reviewerMessages) !== "step-reviewer") {
+      throw new Error("workflow_review may only be called by a step-reviewer");
+    }
+    const plannerID = reviewer?.parentID;
+    if (!plannerID) throw new Error("step-reviewer is missing its step-planner parent");
+    const planner = (await client.session.get({ path: { id: plannerID } }))?.data;
+    const plannerMessages = (await client.session.messages({ path: { id: plannerID } }))?.data ?? [];
+    if (sessionAgent(planner, plannerMessages) !== "step-planner" || planner?.parentID !== state.sessionID) {
+      throw new Error("step-reviewer is not in the active planner hierarchy");
+    }
+    const createdAt = reviewer?.time?.created ?? reviewer?.timeCreated ?? 0;
+    if (createdAt && createdAt < (state.reporting?.todoStartedAt ?? state.startedAt)) {
+      throw new Error("step-reviewer belongs to a stale TODO attempt");
+    }
+    const inspected = reviewerMessages.flatMap((message) => message.parts ?? []).some((part) => {
+      if (part.type !== "tool" || part.state?.status !== "completed") return false;
+      const name = String(part.tool ?? "").toLowerCase();
+      return name !== "workflow_review" && ["read", "grep", "glob", "list", "bash", "git", "codegraph"]
+        .some((toolName) => name.includes(toolName));
+    });
+    if (!inspected) throw new Error("inspect the repository or deliverable before recording a verdict");
+  }
+
+  function inject(sessionID, text, agent = "workflow-orchestrator", noReply = false) {
     return client.session.promptAsync({ path: { id: sessionID }, body: {
       ...(agent ? { agent } : {}), parts: [{ type: "text", text }], ...(noReply ? { noReply: true } : {}),
     }}).catch((error) => console.error("[workflow] inject failed:", error.message));
@@ -465,6 +551,18 @@ export const server = async ({ client }) => {
     event(state, "workflow.blocked", { reason });
     saveWorkflow(state);
     inject(sessionID, `⛔ Workflow blocked: ${reason}\nUse /workflow retry, /workflow skip confirm <reason>, or /workflow stop.`, null, true);
+  }
+
+  function sessionErrorBlockerReason(state) {
+    const reason = state.blocker?.reason;
+    if (reason && reason !== "session error") return reason;
+    const execution = state.executionEvidence;
+    if (execution && !execution.ready && execution.missing?.length) {
+      const todo = currentTodo(state);
+      const prefix = todo ? `Execution evidence is incomplete for ${todo.id}` : "Execution evidence is incomplete";
+      return `${prefix}: ${execution.missing.join("; ")}`;
+    }
+    return reason ?? "session error";
   }
 
   function kick(sessionID) { setTimeout(() => onIdle(sessionID), 50); }
@@ -734,16 +832,18 @@ export const server = async ({ client }) => {
           state.phase = "todo_execute";
           saveWorkflow(state);
           const hierarchy = isNoCodeStep(todo)
-            ? "planner → explore → step-reviewer"
-            : "planner → explore → step-orchestrator → domain agent → step-reviewer";
+            ? "planner → research, planner → step-orchestrator → documentation agent, planner → step-reviewer"
+            : (todo.context7 === "required"
+                ? "planner → research, planner → step-orchestrator → domain agent, planner → step-reviewer"
+                : "planner → explore, planner → step-orchestrator → domain agent, planner → step-reviewer");
           await inject(sessionID, `Execution evidence is incomplete for ${todo.id}: ${execution.missing.join("; ")}. ` +
-            `Run the required ${hierarchy} hierarchy before verification.`, "orchestrator");
+            `Run the required ${hierarchy} hierarchy before verification.`, "workflow-orchestrator");
           return;
         }
         if (todo.context7 === "required" && !(state.context7Evidence?.resolved && state.context7Evidence?.queried)) {
           state.phase = "todo_execute";
           saveWorkflow(state);
-          await inject(sessionID, `Context7 evidence is incomplete for ${todo.id}. Call both resolve-library-id and query-docs, then review the implementation against those docs.`, "orchestrator");
+          await inject(sessionID, `Context7 evidence is incomplete for ${todo.id}. Call both resolve-library-id and query-docs, then review the implementation against those docs.`, "workflow-orchestrator");
           return;
         }
         const failed = Object.values(state.todoEvidence ?? {}).find((entry) => entry.passed === false);
@@ -762,7 +862,7 @@ export const server = async ({ client }) => {
           state.phase = "todo_verify";
           event(state, "phase.changed", { to: "todo_verify" });
           saveWorkflow(state);
-          await inject(sessionID, `Verification evidence is incomplete for ${todo.id}. Call workflow_verify for each missing persisted command index.`, "orchestrator");
+          await inject(sessionID, `Verification evidence is incomplete for ${todo.id}. Call workflow_verify for each missing persisted command index.`, "workflow-orchestrator");
           return;
         }
         if (todo.manual.length && state.manualEvidence.length < todo.manual.length) {
@@ -793,7 +893,7 @@ export const server = async ({ client }) => {
           state.gateEvidence = null;
           event(state, "stage.gate_failed");
           saveWorkflow(state);
-          await inject(sessionID, `Stage gate failed. Fix the stage, then call workflow_verify for the stage gate again.`, "orchestrator");
+          await inject(sessionID, `Stage gate failed. Fix the stage, then call workflow_verify for the stage gate again.`, "workflow-orchestrator");
           return;
         }
         state.phase = "stage_commit";
@@ -818,7 +918,7 @@ export const server = async ({ client }) => {
           releaseLock(state.id);
           setDanger(sessionID, false);
           sessionToWorkflow.delete(sessionID);
-          clearCommandReceipts(sessionID);
+          clearSessionTransientState(sessionID);
           await inject(sessionID, `✓ Workflow ${state.status}. ${state.todos.filter((todo) => todo.done).length} verified, ${Object.keys(state.skipReasons ?? {}).length} skipped.`, null, true);
           return;
         }
@@ -875,8 +975,15 @@ export const server = async ({ client }) => {
       let command;
       if (args.scope === "todo") {
         const todo = currentTodo(state);
-        command = todo?.verify?.[args.index];
-        if (!command) throw new Error("unknown TODO verification index");
+        // Fix 3: Give a directive error for manual-only TODOs instead of a cryptic index error.
+        if (!todo?.verify?.length) {
+          throw new Error(
+            `TODO ${todo?.id ?? "unknown"} has no automated verification — it completes via manual ` +
+            `confirmation (/workflow confirm). Do not call workflow_verify; wait for the engine's manual-verification prompt.`
+          );
+        }
+        command = todo.verify[args.index];
+        if (!command) throw new Error(`unknown TODO verification index ${args.index} (valid range: 0–${todo.verify.length - 1})`);
         const execution = await refreshExecutionEvidence(state, context.sessionID, todo);
         if (!execution.ready) throw new Error(`execution evidence incomplete: ${execution.missing.join("; ")}`);
       } else {
@@ -892,6 +999,20 @@ export const server = async ({ client }) => {
         passed: result.passed, exit: result.exit, outputTail: (result.stdout || result.stderr || result.error || "").slice(-1000) });
       saveWorkflow(state);
       return { output: `${result.passed ? "PASS" : "FAIL"} exit=${result.exit}\n${result.stdout || result.stderr || result.error || "(no output)"}`, metadata: result };
+    },
+  });
+
+  const workflowReview = tool({
+    description: "Record a typed PASS or FAIL verdict for the active workflow TODO after inspecting its result.",
+    args: {
+      workflowId: tool.schema.string(),
+      todoId: tool.schema.string(),
+      verdict: tool.schema.enum(["PASS", "FAIL"]),
+    },
+    async execute(args, context) {
+      await requireActiveStepReviewer(context.sessionID, args.workflowId, args.todoId);
+      context.metadata({ title: `Workflow review ${args.todoId}: ${args.verdict}` });
+      return `Recorded VERDICT: ${args.verdict} for ${args.todoId}`;
     },
   });
 
@@ -1015,7 +1136,7 @@ export const server = async ({ client }) => {
   });
 
   const workflowCreate = tool({
-    description: "Create a new workflow directory from a user-confirmed interactive draft, then validate it with the workflow parser. Never call before the user confirms the final draft.",
+    description: "Create a new workflow directory from a user-confirmed interactive draft. The primary session must first be authorized by an explicit /workflow create [path] command; authorization is single-use after successful creation.",
     args: {
       path: tool.schema.string(),
       files: tool.schema.array(tool.schema.object({
@@ -1024,12 +1145,13 @@ export const server = async ({ client }) => {
       })),
     },
     async execute(args, context) {
+      await requirePrimaryWorkflowCaller(context.sessionID);
       const cwd = (await client.session.get({ path: { id: context.sessionID } }))?.data?.directory ?? process.cwd();
-      const destination = args.path === "~" ? homedir()
-        : args.path.startsWith("~/") ? join(homedir(), args.path.slice(2))
-          : resolve(cwd, args.path);
+      const destination = workflowDestination(cwd, args.path);
+      requireWorkflowCreateAuthorization(context.sessionID, destination);
       const result = createWorkflowDirectory(destination, args.files);
       if (!result.ok) return `⛔ Invalid workflow draft:\n- ${result.errors.join("\n- ")}`;
+      createAuthorizations.delete(context.sessionID);
       context.metadata({ title: "Workflow created", metadata: result });
       return [
         `✓ Created workflow: ${result.path}`,
@@ -1040,7 +1162,7 @@ export const server = async ({ client }) => {
   });
 
   const hooks = {
-    tool: { workflow_control: workflowControl, workflow_verify: workflowVerify,
+    tool: { workflow_control: workflowControl, workflow_verify: workflowVerify, workflow_review: workflowReview,
       workflow_commit: workflowCommit, workflow_handoff: workflowHandoff,
       workflow_create: workflowCreate },
 
@@ -1080,6 +1202,8 @@ export const server = async ({ client }) => {
       const [sub = "status", ...parts] = args.split(/\s+/);
 
       if (sub === "create") {
+        const requestedPath = workflowCreateCommandPath(parts);
+        await authorizeWorkflowCreate(sessionID, requestedPath || null);
         output.parts = [{ type: "text", text: "◈ Starting interactive workflow creation. The destination must not already exist." }];
         return;
       }
@@ -1283,7 +1407,7 @@ export const server = async ({ client }) => {
         if (previousSessionID && previousSessionID !== sessionID) {
           setDanger(previousSessionID, false);
           sessionToWorkflow.delete(previousSessionID);
-          clearCommandReceipts(previousSessionID);
+          clearSessionTransientState(previousSessionID);
         }
         state.sessionID = sessionID;
         if (state.status === "running") state.status = "paused";
@@ -1305,7 +1429,7 @@ export const server = async ({ client }) => {
         const confirmed = parts.includes("confirm");
         if (!confirmed || !explicitId) { output.parts = [{ type: "text", text: "Usage: /workflow reset [id] confirm" }]; return; }
         const resetState = loadWorkflow(explicitId);
-        if (resetState?.sessionID) { setDanger(resetState.sessionID, false); clearCommandReceipts(resetState.sessionID); }
+        if (resetState?.sessionID) { setDanger(resetState.sessionID, false); clearSessionTransientState(resetState.sessionID); }
         releaseLock(explicitId); deleteWorkflow(explicitId);
         if (sessionToWorkflow.get(sessionID) === explicitId) sessionToWorkflow.delete(sessionID);
         output.parts = [{ type: "text", text: `◈ Reset ${explicitId}.` }]; return;
@@ -1477,7 +1601,7 @@ export const server = async ({ client }) => {
         event(state, "todo.skipped", { id: todo.id, reason: state.skipReasons[todo.id] });
         saveWorkflow(state); output.parts = [{ type: "text", text: `⏭ Skipped ${todo.id}; stage gate remains mandatory.` }]; await beginNextTodoOrGate(state, sessionID, "todo_skipped"); return;
       }
-      if (sub === "stop") { state.status = "stopped"; event(state, "workflow.stopped"); saveWorkflow(state); releaseLock(state.id); setDanger(sessionID, false); sessionToWorkflow.delete(sessionID); clearCommandReceipts(sessionID); output.parts = [{ type: "text", text: "◈ Workflow stopped; state preserved." }]; return; }
+      if (sub === "stop") { state.status = "stopped"; event(state, "workflow.stopped"); saveWorkflow(state); releaseLock(state.id); setDanger(sessionID, false); sessionToWorkflow.delete(sessionID); clearSessionTransientState(sessionID); output.parts = [{ type: "text", text: "◈ Workflow stopped; state preserved." }]; return; }
       if (sub === "danger") {
         const dangerState = activeState(sessionID);
         if (!dangerState) { output.parts = [{ type: "text", text: "⛔ Attach or start a workflow first (/workflow start|attach)." }]; return; }
@@ -1498,13 +1622,23 @@ export const server = async ({ client }) => {
     event: async ({ event }) => {
       const sessionID = event.properties?.sessionID;
       if (!sessionID) return;
+      if (event.type === "session.deleted") {
+        clearSessionTransientState(sessionID);
+        return;
+      }
       if (event.type === "permission.asked") {
         await replyToPermissionRequest(event.properties);
         return;
       }
       if (event.type === "session.error") {
         const state = activeState(sessionID);
-        if (state) { state.status = "paused"; state.blocker = { reason: "session error", at: Date.now() }; appendWorkflowEvent(state, "session.error"); saveWorkflow(state); releaseLock(state.id); }
+        if (state) {
+          state.status = "paused";
+          state.blocker = { reason: sessionErrorBlockerReason(state), at: Date.now() };
+          appendWorkflowEvent(state, "session.error");
+          saveWorkflow(state);
+          releaseLock(state.id);
+        }
         return;
       }
       if (event.type === "session.compacted") {

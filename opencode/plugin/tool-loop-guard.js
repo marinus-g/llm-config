@@ -15,6 +15,12 @@ const RECOVERY_TOOLS = new Set([
   "workflow_control", "workflow_verify", "workflow_commit",
 ]);
 
+// Fix 4: Catch repeated-call storms on workflow tools (NOT task — it's legitimately called many
+// times in multi-agent workflows). Limit is generous: these tools are called at most a few times
+// per TODO in normal operation.
+const WORKFLOW_STORM_TOOLS = new Set(["workflow_verify", "workflow_control", "workflow_commit"]);
+const MAX_WORKFLOW_STORM_CALLS = 8;
+
 /** @type {Map<string, { counts: Map<string, { count: number, lastSeen: number }>, failureStreak: number, circuitsOpen: Map<string, { open: boolean, reason: string | null, blockedArgs: Set<string> }> }>} */
 const sessions = new Map();
 
@@ -133,8 +139,21 @@ export const server = async ({ client }) => {
       const state = getSession(input.sessionID);
       const { tool } = input;
 
-      // Recovery tools clear ALL circuits
+      // Recovery tools clear ALL other circuits, but first check for workflow-tool storms.
       if (RECOVERY_TOOLS.has(tool)) {
+        // Fix 4: Detect repeated-call storms on specific workflow tools (excluding task,
+        // which is legitimately called many times in multi-agent orchestration).
+        if (WORKFLOW_STORM_TOOLS.has(tool)) {
+          const stormKey = `storm:${tool}`;
+          const stormCount = track(input.sessionID, stormKey);
+          if (stormCount > MAX_WORKFLOW_STORM_CALLS) {
+            const msg =
+              `${tool} was called ${stormCount} times in a short window — this indicates a loop. ` +
+              `Stop all tool use. Provide a final status message to the user or ask what to do next.`;
+            toast(`Workflow tool storm blocked: ${tool} called ${stormCount}×`, "error");
+            throw new Error(recoveryMessage(msg));
+          }
+        }
         clearAllCircuits(input.sessionID);
         return;
       }
@@ -178,6 +197,12 @@ export const server = async ({ client }) => {
 
     "tool.execute.after": async (input, output) => {
       const state = getSession(input.sessionID);
+
+      // Fix 4: workflow_control attach/resume/danger are legit workflow transitions —
+      // reset the storm counters for all workflow tools so a fresh TODO starts clean.
+      if (input.tool === "workflow_control") {
+        for (const t of WORKFLOW_STORM_TOOLS) state.counts.delete(`storm:${t}`);
+      }
 
       // Reset failure streak on success and clear that tool's circuit
       clearToolCircuit(input.sessionID, input.tool);

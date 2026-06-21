@@ -42,31 +42,46 @@ If the step has **no verification command** and `context7: required` (a pure Con
 research step — its body says "Use Context7 for …" and manual evidence notes "no repository
 command"), use this research-and-record path:
 
-- In Step 1, dispatch focused `explore` tasks that call `resolve-library-id` and
-  `query-docs` for **every named library**. Prompts must include the selected project
-  version and exact setup/provider topic; generic package-name-only queries are invalid.
+- In Step 1, dispatch focused **`research`** tasks (NOT `explore`) that call
+  `resolve-library-id` and `query-docs` for **every named library**. The `research`
+  subagent uses a stronger model suited for MCP doc queries; `explore` (FastContext 4B) is
+  a repo-search specialist only. Prompts must include the selected project version and
+  exact setup/provider topic; generic package-name-only queries are invalid. You must not
+  call Context7 tools yourself: only completed direct `research` child sessions count as
+  execution evidence.
 - In Steps 2 and 3, plan and dispatch `step-orchestrator` to route a documentation agent
   that records the actual Context7 results in the repository. Preserve the distinction
   between the project's selected/locked version and versions advertised by Context7;
   never invent or relabel a version.
 - In Step 4, have `step-reviewer` validate every library ID, query, selected version,
   returned setup/provider pattern, and the recorded artifact against the exploration output.
-- If review fails, send every finding through one corrective explore + record cycle, then
+- If review fails, send every finding through one corrective **`research`** + record cycle, then
   review once more. Never ask the user to decide a verdict or answer a research question.
 
 ---
 
 ## Step 1 — Explore
 
-Dispatch **1–3 `explore` subagent tasks in parallel** (single `task` call batch when
-possible) with targeted queries. Each explore task should identify specific symbols,
-files, or call chains relevant to the step. Example queries:
+Dispatch **1–3 exploration tasks in parallel** (single `task` call batch when possible).
+Use the correct specialist:
 
-- "Where is `onIdle` defined and what does it call?"
-- "Which files import `executePrompt`?"
-- "Find all callers of `workflow_verify` in plugin/workflow.js"
+- **`explore`** (FastContext 4B) — repository search: locate files, symbols, call chains,
+  and code structure for one concrete target. Example queries:
+  - "Where is `onIdle` defined and what does it call?"
+  - "Which files import `executePrompt`?"
+  - "Find all callers of `workflow_verify` in plugin/workflow.js"
+- **`research`** (qwen3-coder-large) — library/API documentation via Context7 MCP. Use for
+  steps with `context7: required`. Example queries:
+  - "Resolve and query Context7 for Next.js 15 Server Actions setup (project version: 15.3.3)"
+  - "Look up React Query v5 provider configuration in Context7"
 
-Collect the `<final_answer>` blocks from each explore result.
+Do NOT use `explore` for Context7 or MCP documentation research — it is a repo-search
+model only. Do NOT ask it to implement, design the solution, analyze the whole architecture,
+or read everything related to a broad topic. Treat its paths and line ranges as candidate
+context and verify important files before implementation. Do NOT use `research` for local
+file lookups.
+
+Collect the `<final_answer>` blocks from each result.
 
 ## Step 2 — Plan
 
@@ -104,8 +119,10 @@ Dispatch **one `step-reviewer` task** with a self-contained prompt that includes
 - The original step text verbatim.
 - The implementation plan and exploration evidence.
 - The complete step-orchestrator report.
-- The instruction to inspect the resulting repository state and return exactly
-  `VERDICT: PASS` or `VERDICT: FAIL` using its documented verdict rules.
+- The workflow id and TODO id supplied by the parent workflow prompt.
+- The instruction to inspect the resulting repository state, call `workflow_review`
+  with `PASS` or `FAIL`, then report `VERDICT: PASS` or `VERDICT: FAIL` using its
+  documented verdict rules.
 
 Wait for the reviewer. Treat a missing or malformed verdict as `FAIL`.
 The reviewer must be dispatched with `task` and must return a real child session id;
@@ -118,12 +135,12 @@ corrections and to retain the same checkbox and workflow-tool restrictions. Then
 dispatch `step-reviewer` once more with both implementation reports and the previous
 findings. Do not perform more than one corrective implementation pass.
 
-For Context7 research failures, dispatch focused corrective `explore` tasks first and
+For Context7 research failures, dispatch focused corrective **`research`** tasks first and
 include their results in the corrective `step-orchestrator` and `step-reviewer` prompts.
 
 ## Step 5 — Report
 
-The first line returned to the caller must be exactly one of:
+Return one of these status lines to the caller:
 
 ```text
 STEP REVIEW: PASS

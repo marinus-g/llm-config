@@ -67,6 +67,8 @@ This project has a CodeGraph MCP server (`codegraph_*` tools) — a tree-sitter-
 
 # Workflow Protocol
 
+The `/workflow` command runs under the dedicated `workflow-orchestrator` primary agent, which drives workflow phases and delegates step execution to `step-planner`. The general `orchestrator` is the everyday default for all other work.
+
 ## Default Agent
 
 Use the `orchestrator` primary agent. It routes tasks to specialized subagents:

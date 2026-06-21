@@ -16,8 +16,8 @@ ttl: 600
 # Example: export LLAMA_API_KEY=llama-local
 
 macros:
-  llama: /home/marinus/work/llm/llama.cpp/build/bin/llama-server
-  models: /home/marinus/.lmstudio/models/lmstudio-community
+  llama: ~/work/llm/llama.cpp/build/bin/llama-server
+  models: ~/.lmstudio/models/lmstudio-community
 
 models:
   # ─────────────────────────────────────────────────────────────
@@ -293,7 +293,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m /home/marinus/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -m ~/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
       -ngl 80
       -c 65536
       -np 1
@@ -331,7 +331,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m /home/marinus/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -m ~/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
       -ngl 80
       -c 98304
       -np 1
@@ -369,7 +369,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m /home/marinus/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -m ~/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
       -ngl 80
       -c 196608
       -np 1
@@ -398,7 +398,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m /home/marinus/.lmstudio/models/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
+      -m ~/.lmstudio/models/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
       -ngl 99
       -c 393216
       -np 4
@@ -426,7 +426,7 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m /home/marinus/.lmstudio/models/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
+      -m ~/.lmstudio/models/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
       -ngl 0
       -c 393216
       -np 4
@@ -591,8 +591,8 @@ models:
     cmd: |
       ${llama}
       --port ${PORT}
-      -m /home/marinus/.cache/huggingface/hub/models--bartowski--google_gemma-3-4b-it-GGUF/blobs/google_gemma-3-4b-it-Q4_K_M.gguf
-      --mmproj /home/marinus/.cache/huggingface/hub/models--bartowski--google_gemma-3-4b-it-GGUF/blobs/mmproj-google_gemma-3-4b-it-f16.gguf
+      -m ~/.cache/huggingface/hub/models--bartowski--google_gemma-3-4b-it-GGUF/blobs/google_gemma-3-4b-it-Q4_K_M.gguf
+      --mmproj ~/.cache/huggingface/hub/models--bartowski--google_gemma-3-4b-it-GGUF/blobs/mmproj-google_gemma-3-4b-it-f16.gguf
       -ngl 0
       --no-mmproj-offload
       -c 8192

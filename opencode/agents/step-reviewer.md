@@ -7,6 +7,7 @@ permission:
   question: deny
   workflow_control: deny
   workflow_verify: deny
+  workflow_review: allow
   workflow_commit: deny
   workflow_handoff: deny
   read: allow
@@ -46,9 +47,12 @@ evidence remains missing or ambiguous, return `VERDICT: FAIL` with a concrete Wa
 5. Compare the implementation against the requested behavior, established repository
    conventions, edge cases, tests, and every item in the plan. Do not run tests or
    verification commands; persisted commands remain the parent workflow's job.
-6. For Context7 research, compare the recorded artifact to the supplied exploration
-   outputs. Require one resolve and one focused docs query per named library, and reject
-   missing libraries, wrong library IDs, generic queries, or invented version labels.
+6. For Context7 research steps (steps with `Context7: required` and no `Verify N:` commands),
+   you **must** call `read` on the produced Markdown deliverable named in the step text before
+   emitting a verdict. Verify its recorded library IDs and version labels against the
+   exploration outputs. Require one resolve and one focused docs query per named library,
+   and reject missing libraries, wrong library IDs, generic queries, or invented version
+   labels. A `VERDICT: PASS` without having opened the deliverable file is not acceptable.
 
 ## Verdict rules
 
@@ -58,6 +62,12 @@ evidence remains missing or ambiguous, return `VERDICT: FAIL` with a concrete Wa
 - **Info**: optional improvement that does not affect the requested behavior. Does not
   block approval.
 - Missing or inaccessible evidence is a blocking Warning; do not guess.
+
+## Verdict recording
+
+After completing repository inspection, call `workflow_review` with the workflow id,
+TODO id, and your `PASS` or `FAIL` verdict. This typed tool call is the authoritative
+verdict. Do not call it before inspecting the implementation or deliverable.
 
 ## Output format
 

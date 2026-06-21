@@ -225,7 +225,7 @@
         "-y",
         "@upstash/context7-mcp",
         "--api-key",
-        "<REDACTED>"
+        "<YOUR_CONTEXT7_API_KEY>"
       ]
     },
     "browserbase": {
@@ -335,6 +335,32 @@
       }
     },
     "orchestrator": {
+      "mode": "primary",
+      "model": "llamaswap/qwen3-coder-large",
+      "permission": {
+        "edit": "deny",
+        "write": "deny",
+        "bash": "deny",
+        "task": "allow",
+        "question": "allow",
+        "workflow_control": "deny",
+        "workflow_verify": "deny",
+        "workflow_review": "allow",
+        "workflow_commit": "deny",
+        "workflow_handoff": "deny",
+        "workflow_create": "deny",
+        "todowrite": "deny",
+        "read": "deny",
+        "glob": "deny",
+        "grep": "deny",
+        "list": "deny",
+        "webfetch": "deny",
+        "skill": "deny",
+        "mcp": "deny",
+        "external_directory": "deny"
+      }
+    },
+    "workflow-orchestrator": {
       "mode": "primary",
       "model": "llamaswap/qwen3-coder-large",
       "permission": {
@@ -586,12 +612,17 @@
       "mode": "subagent",
       "hidden": true,
       "model": "llamaswap/fastcontext-4b",
+      "steps": 4,
+      "temperature": 0,
+      "top_p": 0.8,
       "permission": {
+        "*": "deny",
         "question": "deny",
         "workflow_control": "deny",
         "workflow_verify": "deny",
         "workflow_commit": "deny",
         "workflow_handoff": "deny",
+        "workflow_create": "deny",
         "read": "allow",
         "glob": "allow",
         "grep": "allow",
@@ -601,7 +632,13 @@
         "bash": "deny",
         "task": "deny",
         "webfetch": "deny",
-        "mcp": "allow"
+        "websearch": "deny",
+        "todowrite": "deny",
+        "lsp": "deny",
+        "skill": "deny",
+        "external_directory": "deny",
+        "doom_loop": "deny",
+        "mcp": "deny"
       }
     },
     "step-planner": {
@@ -612,6 +649,7 @@
         "question": "deny",
         "workflow_control": "deny",
         "workflow_verify": "deny",
+        "workflow_review": "allow",
         "workflow_commit": "deny",
         "workflow_handoff": "deny",
         "read": "allow",

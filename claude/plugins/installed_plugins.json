@@ -4,7 +4,7 @@
     "frontend-design@claude-plugins-official": [
       {
         "scope": "user",
-        "installPath": "/home/marinus/.claude/plugins/cache/claude-plugins-official/frontend-design/unknown",
+        "installPath": "~/.claude/plugins/cache/claude-plugins-official/frontend-design/unknown",
         "version": "unknown",
         "installedAt": "2026-05-03T15:26:17.548Z",
         "lastUpdated": "2026-05-03T15:26:17.548Z"
@@ -13,7 +13,7 @@
     "engineering-skills@claude-code-skills": [
       {
         "scope": "user",
-        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/engineering-skills/2.2.3",
+        "installPath": "~/.claude/plugins/cache/claude-code-skills/engineering-skills/2.2.3",
         "version": "2.2.3",
         "installedAt": "2026-05-03T15:26:30.282Z",
         "lastUpdated": "2026-05-03T15:26:30.282Z",
@@ -23,7 +23,7 @@
     "engineering-advanced-skills@claude-code-skills": [
       {
         "scope": "user",
-        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/engineering-advanced-skills/2.3.3",
+        "installPath": "~/.claude/plugins/cache/claude-code-skills/engineering-advanced-skills/2.3.3",
         "version": "2.3.3",
         "installedAt": "2026-05-03T15:26:35.418Z",
         "lastUpdated": "2026-05-03T15:26:35.418Z",
@@ -33,7 +33,7 @@
     "product-skills@claude-code-skills": [
       {
         "scope": "user",
-        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/product-skills/2.3.3",
+        "installPath": "~/.claude/plugins/cache/claude-code-skills/product-skills/2.3.3",
         "version": "2.3.3",
         "installedAt": "2026-05-03T15:26:41.555Z",
         "lastUpdated": "2026-05-03T15:26:41.555Z",
@@ -43,7 +43,7 @@
     "marketing-skills@claude-code-skills": [
       {
         "scope": "user",
-        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/marketing-skills/2.2.3",
+        "installPath": "~/.claude/plugins/cache/claude-code-skills/marketing-skills/2.2.3",
         "version": "2.2.3",
         "installedAt": "2026-05-03T15:26:45.387Z",
         "lastUpdated": "2026-05-03T15:26:45.387Z",
@@ -53,7 +53,7 @@
     "ra-qm-skills@claude-code-skills": [
       {
         "scope": "user",
-        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/ra-qm-skills/2.2.3",
+        "installPath": "~/.claude/plugins/cache/claude-code-skills/ra-qm-skills/2.2.3",
         "version": "2.2.3",
         "installedAt": "2026-05-03T15:26:49.792Z",
         "lastUpdated": "2026-05-03T15:26:49.792Z",
@@ -63,7 +63,7 @@
     "pm-skills@claude-code-skills": [
       {
         "scope": "user",
-        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/pm-skills/2.2.3",
+        "installPath": "~/.claude/plugins/cache/claude-code-skills/pm-skills/2.2.3",
         "version": "2.2.3",
         "installedAt": "2026-05-03T15:26:53.261Z",
         "lastUpdated": "2026-05-03T15:26:53.261Z",
@@ -73,7 +73,7 @@
     "c-level-skills@claude-code-skills": [
       {
         "scope": "user",
-        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/c-level-skills/2.2.3",
+        "installPath": "~/.claude/plugins/cache/claude-code-skills/c-level-skills/2.2.3",
         "version": "2.2.3",
         "installedAt": "2026-05-03T15:26:58.158Z",
         "lastUpdated": "2026-05-03T15:26:58.158Z",
@@ -83,7 +83,7 @@
     "business-growth-skills@claude-code-skills": [
       {
         "scope": "user",
-        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/business-growth-skills/2.2.3",
+        "installPath": "~/.claude/plugins/cache/claude-code-skills/business-growth-skills/2.2.3",
         "version": "2.2.3",
         "installedAt": "2026-05-03T15:27:02.339Z",
         "lastUpdated": "2026-05-03T15:27:02.339Z",
@@ -93,7 +93,7 @@
     "finance-skills@claude-code-skills": [
       {
         "scope": "user",
-        "installPath": "/home/marinus/.claude/plugins/cache/claude-code-skills/finance-skills/2.2.3",
+        "installPath": "~/.claude/plugins/cache/claude-code-skills/finance-skills/2.2.3",
         "version": "2.2.3",
         "installedAt": "2026-05-03T15:27:29.437Z",
         "lastUpdated": "2026-05-03T15:27:29.437Z",
@@ -103,7 +103,7 @@
     "understand-anything@understand-anything": [
       {
         "scope": "user",
-        "installPath": "/home/marinus/.claude/plugins/cache/understand-anything/understand-anything/2.7.5",
+        "installPath": "~/.claude/plugins/cache/understand-anything/understand-anything/2.7.5",
         "version": "2.7.5",
         "installedAt": "2026-05-29T23:50:26.720Z",
         "lastUpdated": "2026-05-29T23:50:26.720Z",
