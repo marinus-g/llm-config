@@ -1,1 +1,1 @@
-{ "plugin": ["./tui/workflow-tui.js", "./tui/model-override-tui.tsx", "./plugin/session-hud.tsx"] }
+{ "plugin": ["./tui/workflow-tui.js", "./tui/model-override-tui.tsx", "./tui/plan-gate-tui.js", "./plugin/session-hud.tsx"] }

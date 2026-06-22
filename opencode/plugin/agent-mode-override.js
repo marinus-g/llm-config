@@ -68,10 +68,16 @@ export const server = async ({ client }) => {
             "Call workflow_control, workflow_verify, workflow_commit, and workflow_handoff directly when an explicit workflow phase prompt requires them; never delegate those calls. " +
             "Delegate all other file, command, tool, log, local-state, validation, and MCP work with task(), using explore for read-only investigation.",
         );
-      } else if (agentLower.includes("plan")) {
+      } else if (agentLower === "plan") {
         prependSystem(output,
           "Current agent override: the active agent is plan. " +
-            "Do not implement changes or delegate writes; produce plans, findings, questions, or TODO content in chat.",
+            "Do not implement changes or delegate writes; produce plans, findings, questions, or TODO content in chat. " +
+            "When your plan is complete and final — ready for the user to act on — " +
+            "print the full plan as normal chat text, then immediately call the `present_plan` tool with NO arguments. " +
+            "Do NOT repeat the plan text inside the tool call; the system reads it from your message automatically. " +
+            "Calling present_plan opens the plan-approval dialog so the user can choose to implement, " +
+            "auto-implement, refine, or request changes. " +
+            "After calling present_plan, stop generating; do not add further text.",
         );
       }
 

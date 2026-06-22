@@ -183,19 +183,14 @@ export const server = async ({ client }) => {
           ? "AUTO MODE: Danger mode is enabled — all edit and bash tools are allowed without prompting (destructive filesystem commands outside the repository still ask).\n\n"
           : "";
 
-        inject(
-          sessionID,
-          `${prefix}◈ Plan approved — implement it now.\n\n` +
-            `The following plan was produced by the plan agent. Implement it completely.\n\n` +
-            `---\n\n${planText}`,
-          "orchestrator",
-        );
-
+        // output.parts IS the implement instruction. Since the TUI dispatched with
+        // agent: "orchestrator", the orchestrator sees this text as its prompt
+        // context and starts implementing.
         output.parts = [{
           type: "text",
-          text: choice === "auto"
-            ? "◈ Auto mode enabled. Handing off to orchestrator…"
-            : "◈ Handing off to orchestrator…",
+          text: `${prefix}◈ Plan approved — implement it now.\n\n` +
+                `The following plan was produced by the plan agent. Implement it completely.\n\n` +
+                `---\n\n${planText}`,
         }];
         return;
       }
@@ -220,13 +215,15 @@ export const server = async ({ client }) => {
         return;
       }
 
-      // Change requests: clear the plan and stay on the plan agent.
+      // Change requests: keep the plan marker, stay on plan agent.
       if (choice === "change") {
-        clearPendingPlan(sessionID); // unconditional — plugin is authoritative on choice
+        // Keep the plan marker so the plan agent can reference it.
+        // The user will type their change requests in the prompt window,
+        // and the plan agent will revise using conversation context.
         try {
           client.tui.showToast({
             body: {
-              message: "Plan cleared — type your change requests",
+              message: "Type your change request — the plan agent will revise",
               variant: "info",
             },
           }).catch(() => {});
@@ -234,7 +231,7 @@ export const server = async ({ client }) => {
 
         output.parts = [{
           type: "text",
-          text: "◎ Plan cleared. Describe your change requests and the plan agent will revise.",
+          text: "✏ Your change requests go here. Type your revisions in the prompt below — the plan agent will update the plan based on your input.",
         }];
         return;
       }
