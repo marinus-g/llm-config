@@ -118,27 +118,6 @@
             "output": 8192
           }
         },
-        "qwopus-coder-q6:low": {
-          "name": "Qwopus3.6 27B Coder MTP Q6 (focused, low effort)",
-          "limit": {
-            "context": 65536,
-            "output": 8192
-          }
-        },
-        "qwopus-coder-q6:medium": {
-          "name": "Qwopus3.6 27B Coder MTP Q6 (focused, medium effort)",
-          "limit": {
-            "context": 65536,
-            "output": 8192
-          }
-        },
-        "qwopus-coder-q6:high": {
-          "name": "Qwopus3.6 27B Coder MTP Q6 (focused, high effort)",
-          "limit": {
-            "context": 65536,
-            "output": 8192
-          }
-        },
         "qwopus-coder-mid-q6": {
           "name": "Qwopus3.6 27B Coder MTP Q6 (mid context)",
           "limit": {
@@ -146,50 +125,8 @@
             "output": 8192
           }
         },
-        "qwopus-coder-mid-q6:low": {
-          "name": "Qwopus3.6 27B Coder MTP Q6 (mid context, low effort)",
-          "limit": {
-            "context": 98304,
-            "output": 8192
-          }
-        },
-        "qwopus-coder-mid-q6:medium": {
-          "name": "Qwopus3.6 27B Coder MTP Q6 (mid context, medium effort)",
-          "limit": {
-            "context": 98304,
-            "output": 8192
-          }
-        },
-        "qwopus-coder-mid-q6:high": {
-          "name": "Qwopus3.6 27B Coder MTP Q6 (mid context, high effort)",
-          "limit": {
-            "context": 98304,
-            "output": 8192
-          }
-        },
         "qwopus-coder-large-q6": {
           "name": "Qwopus3.6 27B Coder MTP Q6 (large context)",
-          "limit": {
-            "context": 196608,
-            "output": 8192
-          }
-        },
-        "qwopus-coder-large-q6:low": {
-          "name": "Qwopus3.6 27B Coder MTP Q6 (large context, low effort)",
-          "limit": {
-            "context": 196608,
-            "output": 8192
-          }
-        },
-        "qwopus-coder-large-q6:medium": {
-          "name": "Qwopus3.6 27B Coder MTP Q6 (large context, medium effort)",
-          "limit": {
-            "context": 196608,
-            "output": 8192
-          }
-        },
-        "qwopus-coder-large-q6:high": {
-          "name": "Qwopus3.6 27B Coder MTP Q6 (large context, high effort)",
           "limit": {
             "context": 196608,
             "output": 8192
@@ -336,6 +273,7 @@
     "./plugin/see-image.js",
     "./plugin/goal.js",
     "./plugin/workflow.js",
+    "./plugin/plan-gate.js",
     "./plugin/agent-mode-override.js"
   ],
   "agent": {
@@ -366,7 +304,8 @@
         "grep": "allow",
         "list": "allow",
         "webfetch": "allow",
-        "mcp": "allow"
+        "mcp": "allow",
+        "present_plan": "allow"
       }
     },
     "orchestrator": {
