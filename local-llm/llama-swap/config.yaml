@@ -8,8 +8,9 @@ healthCheckTimeout: 300
 logLevel: info
 logToStdout: both
 
-# Global TTL: unload after 10 min idle (override per model)
-ttl: 600
+# Global TTL: unload after 3 min idle (override per model).
+# Short TTL keeps VRAM free for the compositor when inference is idle.
+ttl: 180  # unload after 3 min idle (global default)
 
 # LLAMA_API_KEY must be set in your shell env (or ~/.zprofile / ~/.profile).
 # Must match opencode.json provider.llamaswap.options.apiKey ("llama-local").
@@ -31,7 +32,7 @@ models:
   "qwen3-coder":
     name: "Qwen3.6 27B (coder)"
     description: "Main coding model — 65536 ctx, single slot, KV q8"
-    ttl: 600  # unload after 10 min idle
+    ttl: 180  # unload after 3 min idle
     cmd: |
       ${llama}
       --port ${PORT}
@@ -64,12 +65,13 @@ models:
   "qwen3-base":
     name: "Qwen3.6 27B Q5 (base, reasoning)"
     description: "Q5_K_M — reasoning enabled, 196608 ctx, single slot, KV q8"
-    ttl: 600
+    ttl: 180  # unload after 3 min idle
     cmd: |
       ${llama}
       --port ${PORT}
       -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q5_K_M.gguf
-      -ngl 80
+      -ngl auto
+      --fit-target 3072
       -c 196608
       -np 1
       -n 8192
@@ -96,7 +98,7 @@ models:
   "qwen3-coder-q6":
     name: "Qwen3.6 27B Q6 (coder)"
     description: "Q6_K quality test — 65536 ctx, single slot, KV q8"
-    ttl: 600
+    ttl: 180  # unload after 3 min idle
     cmd: |
       ${llama}
       --port ${PORT}
@@ -129,7 +131,7 @@ models:
   "qwen3-coder-mid":
     name: "Qwen3.6 27B (mid context)"
     description: "98304 ctx, single slot — larger delegated coder"
-    ttl: 600
+    ttl: 180  # unload after 3 min idle
     cmd: |
       ${llama}
       --port ${PORT}
@@ -162,12 +164,13 @@ models:
   "qwen3-coder-mid-q6":
     name: "Qwen3.6 27B Q6 (mid context)"
     description: "Q6_K quality test — 98304 ctx, single slot, KV q8"
-    ttl: 600
+    ttl: 180  # unload after 3 min idle
     cmd: |
       ${llama}
       --port ${PORT}
       -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q6_K.gguf
-      -ngl 80
+      -ngl auto
+      --fit-target 3072
       -c 98304
       -np 1
       -n 8192
@@ -195,12 +198,13 @@ models:
   "qwen3-coder-large":
     name: "Qwen3.6 27B (large context)"
     description: "196608 ctx, single slot, no speculative decoding — less compaction for long sessions"
-    ttl: 600
+    ttl: 180  # unload after 3 min idle
     cmd: |
       ${llama}
       --port ${PORT}
       -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q4_K_M.gguf
-      -ngl 80
+      -ngl auto
+      --fit-target 3072
       -c 196608
       -np 1
       -n 8192
@@ -295,7 +299,7 @@ models:
   "qwen3-moe-large":
     name: "Qwen3.6 35B MoE (large context)"
     description: "131072 ctx — for long orchestrator sessions, no speculative decoding"
-    ttl: 300
+    ttl: 300  # unload after 5 min idle
     cmd: |
       ${llama}
       --port ${PORT}
@@ -326,7 +330,7 @@ models:
   "qwen3-moe-vl":
     name: "Qwen3.6 35B MoE VL (vision, strong)"
     description: "35B MoE + multimodal projector — best vision quality"
-    ttl: 180
+    ttl: 180  # unload after 3 min idle
     cmd: |
       ${llama}
       --port ${PORT}
@@ -351,29 +355,18 @@ models:
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
-  # Experimental planning/coder model — Qwopus3.6 27B Coder MTP Q6_K
-  # Fine-tuned no-thinking agent/coder variant. Keep focused at 65536 ctx first
-  # to leave VRAM and connector/power headroom on the RTX 5090.
+  # Qwopus3.6 27B Coder MTP Q6_K — focused profile.
+  # The model was trained through 32768 tokens; YaRN expands it to 65536.
+  # Embedded MTP uses the model's two auxiliary prediction heads.
   # ─────────────────────────────────────────────────────────────
   "qwopus-coder-q6":
     name: "Qwopus3.6 27B Coder MTP Q6 (focused)"
-    description: "Experimental Qwopus Q6_K — focused planning/coding, 65536 ctx"
-    ttl: 300
-    filters:
-      setParamsByID:
-        "qwopus-coder-q6:low":
-          chat_template_kwargs:
-            reasoning_effort: low
-        "qwopus-coder-q6:medium":
-          chat_template_kwargs:
-            reasoning_effort: medium
-        "qwopus-coder-q6:high":
-          chat_template_kwargs:
-            reasoning_effort: high
+    description: "Qwopus Q6_K — 65536 ctx, YaRN 2x, embedded MTP"
+    ttl: 300  # unload after 5 min idle
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${models}/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -m ~/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
       -ngl 80
       -c 65536
       -np 1
@@ -383,6 +376,11 @@ models:
       --cache-type-k q8_0
       --cache-type-v q8_0
       -fa auto
+      --spec-type draft-mtp
+      --spec-draft-n-max 2
+      --rope-scaling yarn
+      --rope-scale 2
+      --yarn-orig-ctx 32768
       --jinja
       --reasoning off
       --no-warmup
@@ -394,30 +392,19 @@ models:
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
-  # Experimental planning/coder model — Qwopus3.6 27B Coder MTP Q6_K
-  # Mid-context variant for OpenCode plan agent. Keeps the focused 64k profile
-  # available while giving plan enough room for the large skill/tool catalog.
+  # Qwopus3.6 27B Coder MTP Q6_K — middle-context profile.
+  # YaRN expands the 32768-token training context to 98304 tokens.
   # ─────────────────────────────────────────────────────────────
   "qwopus-coder-mid-q6":
     name: "Qwopus3.6 27B Coder MTP Q6 (mid context)"
-    description: "Experimental Qwopus Q6_K — planning/coding, 98304 ctx"
-    ttl: 300
-    filters:
-      setParamsByID:
-        "qwopus-coder-mid-q6:low":
-          chat_template_kwargs:
-            reasoning_effort: low
-        "qwopus-coder-mid-q6:medium":
-          chat_template_kwargs:
-            reasoning_effort: medium
-        "qwopus-coder-mid-q6:high":
-          chat_template_kwargs:
-            reasoning_effort: high
+    description: "Qwopus Q6_K — 98304 ctx, YaRN 3x, embedded MTP"
+    ttl: 300  # unload after 5 min idle
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${models}/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
-      -ngl 80
+      -m ~/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -ngl auto
+      --fit-target 3072
       -c 98304
       -np 1
       -n 8192
@@ -426,6 +413,11 @@ models:
       --cache-type-k q8_0
       --cache-type-v q8_0
       -fa auto
+      --spec-type draft-mtp
+      --spec-draft-n-max 2
+      --rope-scaling yarn
+      --rope-scale 3
+      --yarn-orig-ctx 32768
       --jinja
       --reasoning off
       --no-warmup
@@ -437,30 +429,20 @@ models:
       --api-key ${env.LLAMA_API_KEY}
 
   # ─────────────────────────────────────────────────────────────
-  # Large-context planning/coder — Qwopus3.6 27B Coder MTP Q6_K
-  # 196608 ctx, NO speculative decoding (draft KV cache OOMs at this size).
-  # Use for long plan sessions where compaction is worse than slower tokens/sec.
+  # Qwopus3.6 27B Coder MTP Q6_K — large-context profile.
+  # YaRN expands the 32768-token training context to 196608 tokens. Embedded
+  # A 3 GiB fit target leaves about 2 GiB after the extra MTP context is built.
   # ─────────────────────────────────────────────────────────────
   "qwopus-coder-large-q6":
     name: "Qwopus3.6 27B Coder MTP Q6 (large context)"
-    description: "Experimental Qwopus Q6_K — planning/coding, 196608 ctx"
-    ttl: 300
-    filters:
-      setParamsByID:
-        "qwopus-coder-large-q6:low":
-          chat_template_kwargs:
-            reasoning_effort: low
-        "qwopus-coder-large-q6:medium":
-          chat_template_kwargs:
-            reasoning_effort: medium
-        "qwopus-coder-large-q6:high":
-          chat_template_kwargs:
-            reasoning_effort: high
+    description: "Qwopus Q6_K — 196608 ctx, YaRN 6x, embedded MTP, 2 GiB VRAM reserve"
+    ttl: 300  # unload after 5 min idle
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${models}/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
-      -ngl 80
+      -m ~/.lmstudio/models/Jackrong/Qwopus3.6-27B-Coder-MTP-GGUF/Qwopus3.6-27B-Coder-MTP-Q6_K.gguf
+      -ngl auto
+      --fit-target 3072
       -c 196608
       -np 1
       -n 8192
@@ -469,6 +451,11 @@ models:
       --cache-type-k q8_0
       --cache-type-v q8_0
       -fa auto
+      --spec-type draft-mtp
+      --spec-draft-n-max 2
+      --rope-scaling yarn
+      --rope-scale 6
+      --yarn-orig-ctx 32768
       --jinja
       --reasoning off
       --no-warmup
@@ -483,20 +470,21 @@ models:
   # FastContext 4B RL — repo-exploration subagent
   # Microsoft FastContext-1.0-4B-RL: purpose-built for codebase exploration.
   # READ/GLOB/GREP only; returns compact path:line evidence. 4B params so it
-  # loads/unloads fast alongside the main coder. 131072 ctx (model supports 262K;
-  # keeping 128K to stay well within VRAM budget on the 5090).
+  # loads/unloads fast alongside the main coder.
+  # 2 parallel slots × 256K ctx/slot = 524288 total KV tokens.
+  # VRAM breakdown: ~2.4 GB weights + ~18 GB KV cache (Q4_0) ≈ 20 GB — fits the 5090.
   # ─────────────────────────────────────────────────────────────
   "fastcontext-4b":
     name: "FastContext 4B RL (repo explorer)"
-    description: "Microsoft FastContext-1.0-4B-RL — 4 parallel slots, 96K ctx/slot, evicts primary GPU model"
+    description: "Microsoft FastContext-1.0-4B-RL — 2 parallel slots, 256K ctx/slot, evicts primary GPU model"
     ttl: 300  # unload after 5 min idle
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${models}/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
+      -m ~/.lmstudio/models/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
       -ngl 99
-      -c 393216
-      -np 4
+      -c 524288
+      -np 2
       -n 4096
       -b 2048
       -ub 512
@@ -524,11 +512,11 @@ models:
   "fastcontext-4b-cpu":
     name: "FastContext 4B RL (CPU fallback)"
     description: "CPU fallback for explore agent — 4 parallel slots, 96K ctx/slot, all layers on CPU"
-    ttl: 120
+    ttl: 120  # unload after 2 min idle (CPU shadow)
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${models}/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
+      -m ~/.lmstudio/models/microsoft/FastContext-1.0-4B-RL-GGUF/FastContext-1.0-4B-RL-Q4_K_M.gguf
       -ngl 0
       -c 393216
       -np 4
@@ -551,7 +539,7 @@ models:
   "qwen3-coder-cpu":
     name: "Qwen3 1.7B (coder CPU fallback)"
     description: "Fast CPU shadow — small text fallback while GPU is occupied"
-    ttl: 120
+    ttl: 120  # unload after 2 min idle (CPU shadow)
     cmd: |
       ${llama}
       --port ${PORT}
@@ -576,7 +564,7 @@ models:
   "qwen3-coder-mid-cpu":
     name: "Qwen3 1.7B mid ctx (CPU fallback)"
     description: "Fast CPU shadow — mid-context text fallback while GPU is occupied"
-    ttl: 120
+    ttl: 120  # unload after 2 min idle (CPU shadow)
     cmd: |
       ${llama}
       --port ${PORT}
@@ -601,7 +589,7 @@ models:
   "qwen3-coder-large-cpu":
     name: "Qwen3 1.7B large ctx (CPU fallback)"
     description: "Fast CPU shadow — large-context text fallback while GPU is occupied"
-    ttl: 120
+    ttl: 120  # unload after 2 min idle (CPU shadow)
     cmd: |
       ${llama}
       --port ${PORT}
@@ -626,7 +614,7 @@ models:
   "qwen3-vl-cpu":
     name: "Qwen3.6 27B VL (CPU)"
     description: "CPU shadow — vision model while GPU is occupied"
-    ttl: 120
+    ttl: 120  # unload after 2 min idle (CPU shadow)
     cmd: |
       ${llama}
       --port ${PORT}
@@ -652,7 +640,7 @@ models:
   "qwen3-moe-cpu":
     name: "Qwen3 1.7B (MoE CPU fallback)"
     description: "Fast CPU shadow — text fallback while GPU is occupied"
-    ttl: 120
+    ttl: 120  # unload after 2 min idle (CPU shadow)
     cmd: |
       ${llama}
       --port ${PORT}
@@ -677,7 +665,7 @@ models:
   "qwen3-moe-large-cpu":
     name: "Qwen3 1.7B large ctx (MoE CPU fallback)"
     description: "Fast CPU shadow — large-context text fallback while GPU is occupied"
-    ttl: 120
+    ttl: 120  # unload after 2 min idle (CPU shadow)
     cmd: |
       ${llama}
       --port ${PORT}
@@ -702,7 +690,7 @@ models:
   "qwen3-moe-vl-cpu":
     name: "Qwen3.6 35B MoE VL (CPU)"
     description: "CPU shadow — MoE vision while GPU is occupied"
-    ttl: 120
+    ttl: 120  # unload after 2 min idle (CPU shadow)
     cmd: |
       ${llama}
       --port ${PORT}
@@ -734,11 +722,11 @@ models:
   "gemma4-31b":
     name: "Gemma 4 31B QAT (dense)"
     description: "unsloth UD-Q4_K_XL — 31B dense, 65536 ctx, single slot"
-    ttl: 600
+    ttl: 180  # unload after 3 min idle
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${models}/unsloth/gemma-4-31B-it-qat-GGUF/gemma-4-31B-it-qat-UD-Q4_K_XL.gguf
+      -m ~/.lmstudio/models/unsloth/gemma-4-31B-it-qat-GGUF/gemma-4-31B-it-qat-UD-Q4_K_XL.gguf
       -ngl 99
       -c 65536
       -np 1
@@ -766,12 +754,12 @@ models:
   "keye-vl":
     name: "Qwen3-VL 30B MoE (vision, strong)"
     description: "Qwen3-VL-30B-A3B Q4_K_M + F16 mmproj — strongest supported GPU vision"
-    ttl: 300
+    ttl: 300  # unload after 5 min idle
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${models}/Qwen/Qwen3-VL-30B-A3B-Instruct-GGUF/Qwen3VL-30B-A3B-Instruct-Q4_K_M.gguf
-      --mmproj ${models}/Qwen/Qwen3-VL-30B-A3B-Instruct-GGUF/mmproj-Qwen3VL-30B-A3B-Instruct-F16.gguf
+      -m ~/.lmstudio/models/Qwen/Qwen3-VL-30B-A3B-Instruct-GGUF/Qwen3VL-30B-A3B-Instruct-Q4_K_M.gguf
+      --mmproj ~/.lmstudio/models/Qwen/Qwen3-VL-30B-A3B-Instruct-GGUF/mmproj-Qwen3VL-30B-A3B-Instruct-F16.gguf
       -ngl 99
       -c 32768
       -n 8192
@@ -798,11 +786,11 @@ models:
   "gemma4-12b-coder":
     name: "Gemma 4 12B Coder (Fable-5 tune)"
     description: "#1 trending — yuxinlu1 Fable-5/Composer2.5, Q6_K, 98304 ctx"
-    ttl: 600
+    ttl: 180  # unload after 3 min idle
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${models}/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF/gemma4-coding-Q6_K.gguf
+      -m ~/.lmstudio/models/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF/gemma4-coding-Q6_K.gguf
       -ngl 99
       -c 98304
       -np 1
@@ -822,18 +810,174 @@ models:
       --presence-penalty 1.0
       --api-key ${env.LLAMA_API_KEY}
 
+  # ─────────────────────────────────────────────────────────────
+  # Qwable 3.6 27B — Fable-5-style reasoning/instruction fine-tune
+  # Base: unsloth/Qwen3.6-27B (same arch as qwen3-base/coder).
+  # Native 262144-token training context → no YaRN needed.
+  # Reasoning ON (no --reasoning off); sampling: temp 0.6, top-k 20, top-p 0.95.
+  # Q6_K for quality, Q5_K_M for the large-ctx profile (~same VRAM as qwen3-base).
+  # ─────────────────────────────────────────────────────────────
+  "qwable-q6":
+    name: "Qwable 3.6 27B (reasoning, Q6)"
+    description: "Qwable Q6_K — reasoning on, 65536 ctx, single slot, KV q8"
+    ttl: 180  # unload after 3 min idle
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ~/.lmstudio/models/Mia-AiLab/Qwable-3.6-27B-GGUF/Qwable-3.6-27b_q6_k.gguf
+      -ngl 80
+      -c 65536
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --temp 0.6
+      --top-k 20
+      --top-p 0.95
+      --min-p 0
+      --presence-penalty 0.0
+      --api-key ${env.LLAMA_API_KEY}
+
+  "qwable-mid-q6":
+    name: "Qwable 3.6 27B (reasoning, Q6, mid ctx)"
+    description: "Qwable Q6_K — reasoning on, 98304 ctx, single slot, KV q8"
+    ttl: 180  # unload after 3 min idle
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ~/.lmstudio/models/Mia-AiLab/Qwable-3.6-27B-GGUF/Qwable-3.6-27b_q6_k.gguf
+      -ngl auto
+      --fit-target 3072
+      -c 98304
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --temp 0.6
+      --top-k 20
+      --top-p 0.95
+      --min-p 0
+      --presence-penalty 0.0
+      --api-key ${env.LLAMA_API_KEY}
+
+  "qwable-large":
+    name: "Qwable 3.6 27B (reasoning, Q5, large ctx)"
+    description: "Qwable Q5_K_M — reasoning on, 196608 ctx, single slot, KV q8"
+    ttl: 180  # unload after 3 min idle
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ~/.lmstudio/models/Mia-AiLab/Qwable-3.6-27B-GGUF/Qwable-3.6-27b_q5_k_m.gguf
+      -ngl auto
+      --fit-target 3072
+      -c 196608
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --temp 0.6
+      --top-k 20
+      --top-p 0.95
+      --min-p 0
+      --presence-penalty 0.0
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Qwable 3.6 27B MTP — orchestrator/planner profiles with speculative decoding
+  # Same arch as Qwable non-MTP; embedded MTP heads enable draft-mtp speculation.
+  # Reasoning ON (no --reasoning off). Sampling: temp 0.6, top-k 20, top-p 0.95.
+  # Q6_K (22.4 GB) — focused: 65536 ctx for pure routers; mid: 98304 ctx for planners.
+  # VRAM: ~27 GB @ focused, ~29 GB @ mid — both fit on RTX 5090 with headroom.
+  # ─────────────────────────────────────────────────────────────
+  "qwable-mtp":
+    name: "Qwable 3.6 27B MTP (reasoning, Q6, focused)"
+    description: "Qwable MTP Q6_K — reasoning on, 65536 ctx, embedded MTP speculation"
+    ttl: 1800  # unload after 30 min idle (longer: avoids wasted reload during an active session)
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ~/.lmstudio/models/Mia-AiLab/Qwable-3.6-27b-MTP-GGUF/Qwable-3.6-27b_q6_k.gguf
+      -ngl 80
+      -c 65536
+      -np 1
+      -n 8192
+      -b 2048
+      -ub 512
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --spec-type draft-mtp
+      --spec-draft-n-max 2
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --temp 0.6
+      --top-k 20
+      --top-p 0.95
+      --min-p 0
+      --presence-penalty 0.0
+      --api-key ${env.LLAMA_API_KEY}
+
+  "qwable-mtp-mid":
+    name: "Qwable 3.6 27B MTP (reasoning, Q6, mid ctx)"
+    description: "Qwable MTP Q6_K — reasoning on, 98304 ctx, embedded MTP speculation"
+    ttl: 1800  # unload after 30 min idle (longer: avoids wasted reload during an active session)
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ~/.lmstudio/models/Mia-AiLab/Qwable-3.6-27b-MTP-GGUF/Qwable-3.6-27b_q6_k.gguf
+      -ngl auto
+      --fit-target 3072
+      -c 98304
+      -np 1
+      -n 8192
+      -b 2048
+      -ub 512
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --spec-type draft-mtp
+      --spec-draft-n-max 2
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --temp 0.6
+      --top-k 20
+      --top-p 0.95
+      --min-p 0
+      --presence-penalty 0.0
+      --api-key ${env.LLAMA_API_KEY}
+
   # Gemma 3 4B — small fast CPU vision model used as fallback by the see_image plugin
   # when qwen3-moe-vl (GPU) is busy or unavailable. Absolute GGUF paths because this
   # model lives in the HF cache, not under ${models}.
   "gemma3-vl-cpu":
     name: "Gemma 3 4B VL (CPU)"
     description: "Small fast CPU vision — see_image fallback when GPU is occupied"
-    ttl: 300
+    ttl: 300  # unload after 5 min idle (CPU model)
     cmd: |
       ${llama}
       --port ${PORT}
-      -m ${hf_cache}/models--bartowski--google_gemma-3-4b-it-GGUF/blobs/google_gemma-3-4b-it-Q4_K_M.gguf
-      --mmproj ${hf_cache}/models--bartowski--google_gemma-3-4b-it-GGUF/blobs/mmproj-google_gemma-3-4b-it-f16.gguf
+      -m ~/.cache/huggingface/hub/models--bartowski--google_gemma-3-4b-it-GGUF/blobs/google_gemma-3-4b-it-Q4_K_M.gguf
+      --mmproj ~/.cache/huggingface/hub/models--bartowski--google_gemma-3-4b-it-GGUF/blobs/mmproj-google_gemma-3-4b-it-f16.gguf
       -ngl 0
       --no-mmproj-offload
       -c 8192
@@ -844,6 +988,61 @@ models:
       --top-k 64
       --top-p 0.95
       --min-p 0
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Ornith-1.0 35B (Q4_K_M) — deepreinforce-ai agentic coder (qwen3_5_moe MoE).
+  # 196608 ctx with q8_0 KV. Tight fit (~31-32 GB); see ornith-35b-max for a
+  # more comfortable 256K alternative at lower KV quality (q4_0).
+  # ─────────────────────────────────────────────────────────────
+  "ornith-35b":
+    name: "Ornith-1.0 35B Q4 (coder, 196K)"
+    description: "Q4_K_M — 196608 ctx, single slot, KV q8"
+    ttl: 180
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ~/.lmstudio/models/deepreinforce-ai/Ornith-1.0-35B-GGUF/ornith-1.0-35b-Q4_K_M.gguf
+      -ngl 99
+      --fit-target 1536
+      -c 196608
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Ornith-1.0 35B (Q4_K_M) — full native 262144 ctx via q4_0 KV cache.
+  # Same weights as ornith-35b; q4_0 KV halves cache cost (~3 GB headroom).
+  # ─────────────────────────────────────────────────────────────
+  "ornith-35b-max":
+    name: "Ornith-1.0 35B Q4 (coder, 256K)"
+    description: "Q4_K_M — 262144 ctx, single slot, KV q4"
+    ttl: 180
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ~/.lmstudio/models/deepreinforce-ai/Ornith-1.0-35B-GGUF/ornith-1.0-35b-Q4_K_M.gguf
+      -ngl 99
+      --fit-target 2048
+      -c 262144
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q4_0
+      --cache-type-v q4_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
       --api-key ${env.LLAMA_API_KEY}
 
 # =============================================================================
@@ -869,6 +1068,13 @@ matrix:
     g31: gemma4-31b
     kv:  keye-vl
     g12: gemma4-12b-coder
+    wq:  qwable-q6
+    wqm: qwable-mid-q6
+    wl:  qwable-large
+    wmt: qwable-mtp
+    wmtm: qwable-mtp-mid
+    orn:  ornith-35b
+    ornm: ornith-35b-max
     # FastContext exploration model (4B — evicts main GPU model when requested;
     # no coexistence set, so loading it unloads whatever is resident)
     fc:  fastcontext-4b
@@ -886,7 +1092,7 @@ matrix:
     # Any single Qwen GPU model may run alongside any single CPU shadow model.
     # Qwopus profiles intentionally run alone so stale CPU shadows do not stay
     # loaded while opencode swaps between Qwopus context sizes.
-    gpu_cpu: "(c | cm | cl | v | m | ml | mv | g31 | kv | g12) & (cc | cmc | clc | vc | mc | mlc | mvc | gvc | fcc)"
+    gpu_cpu: "(c | cm | cl | v | m | ml | mv | g31 | kv | g12 | wq | wqm | wl | wmt | wmtm | orn | ornm) & (cc | cmc | clc | vc | mc | mlc | mvc | gvc | fcc)"
     # fcc (fastcontext-4b-cpu) is in gpu_cpu above so it can coexist with a GPU primary as
     # a manual shadow, but fastcontext-4b (GPU) is intentionally in NO coexistence set:
     # loading it evicts whatever GPU model is resident, giving FastContext the full card
