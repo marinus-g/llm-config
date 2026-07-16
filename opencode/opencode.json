@@ -216,6 +216,34 @@
             "context": 262144,
             "output": 8192
           }
+        },
+        "thinkingcap": {
+          "name": "ThinkingCap Qwen3.6 27B (reasoning)",
+          "limit": {
+            "context": 65536,
+            "output": 8192
+          }
+        },
+        "thinkingcap-large": {
+          "name": "ThinkingCap Qwen3.6 27B (reasoning, large ctx)",
+          "limit": {
+            "context": 196608,
+            "output": 8192
+          }
+        },
+        "qwen3-mtp": {
+          "name": "Qwen3.6 27B MTP (reasoning, focused)",
+          "limit": {
+            "context": 65536,
+            "output": 8192
+          }
+        },
+        "qwen3-mtp-mid": {
+          "name": "Qwen3.6 27B MTP (reasoning, mid ctx)",
+          "limit": {
+            "context": 98304,
+            "output": 8192
+          }
         }
       }
     },
@@ -333,6 +361,7 @@
     "./plugin/plan-task-allowlist.js",
     "./plugin/tool-loop-guard.js",
     "./plugin/llama-swap-gpu.js",
+    "./plugin/gpu-handoff.js",
     "./plugin/see-image.js",
     "./plugin/goal.js",
     "./plugin/workflow.js",
@@ -675,6 +704,7 @@
         "workflow_commit": "deny",
         "workflow_handoff": "deny",
         "workflow_create": "deny",
+        "workflow_review": "deny",
         "read": "allow",
         "glob": "allow",
         "grep": "allow",
@@ -708,6 +738,7 @@
         "workflow_commit": "deny",
         "workflow_handoff": "deny",
         "workflow_create": "deny",
+        "workflow_review": "deny",
         "read": "allow",
         "glob": "allow",
         "grep": "allow",
@@ -736,6 +767,7 @@
         "workflow_verify": "deny",
         "workflow_commit": "deny",
         "workflow_handoff": "deny",
+        "workflow_review": "deny",
         "read": "allow",
         "glob": "allow",
         "grep": "allow",
@@ -793,6 +825,7 @@
         "workflow_verify": "deny",
         "workflow_commit": "deny",
         "workflow_handoff": "deny",
+        "workflow_review": "deny",
         "task": "allow",
         "edit": "deny",
         "write": "deny",

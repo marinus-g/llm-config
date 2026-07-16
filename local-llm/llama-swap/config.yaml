@@ -1045,6 +1045,130 @@ models:
       --defrag-thold 0.1
       --api-key ${env.LLAMA_API_KEY}
 
+  # ─────────────────────────────────────────────────────────────
+  # ThinkingCap Qwen3.6 27B — reasoning-focused model
+  # Same weights as qwen3-base; reasoning ON (no --reasoning off).
+  # Sampling: temp 0.6, top-k 20, top-p 0.95, min-p 0.
+  # ─────────────────────────────────────────────────────────────
+  "thinkingcap":
+    name: "ThinkingCap Qwen3.6 27B (reasoning)"
+    description: "Q4_K_M — reasoning on, 65536 ctx, single slot, KV q8"
+    ttl: 180  # unload after 3 min idle
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q4_K_M.gguf
+      -ngl 80
+      -c 65536
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --temp 0.6
+      --top-k 20
+      --top-p 0.95
+      --min-p 0
+      --presence-penalty 0.0
+      --api-key ${env.LLAMA_API_KEY}
+
+  "thinkingcap-large":
+    name: "ThinkingCap Qwen3.6 27B (reasoning, large ctx)"
+    description: "Q5_K_M — reasoning on, 196608 ctx, single slot, KV q8"
+    ttl: 180  # unload after 3 min idle
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q5_K_M.gguf
+      -ngl auto
+      --fit-target 3072
+      -c 196608
+      -np 1
+      -n 8192
+      -b 4096
+      -ub 1024
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --temp 0.6
+      --top-k 20
+      --top-p 0.95
+      --min-p 0
+      --presence-penalty 0.0
+      --api-key ${env.LLAMA_API_KEY}
+
+  # ─────────────────────────────────────────────────────────────
+  # Qwen3.6 27B MTP — orchestrator/planner profiles with speculative decoding
+  # Embedded MTP heads enable draft-mtp speculation.
+  # Reasoning ON (no --reasoning off). Sampling: temp 0.6, top-k 20, top-p 0.95.
+  # ─────────────────────────────────────────────────────────────
+  "qwen3-mtp":
+    name: "Qwen3.6 27B MTP (reasoning, focused)"
+    description: "MTP Q4_K_M — reasoning on, 65536 ctx, embedded MTP speculation"
+    ttl: 1800  # unload after 30 min idle (longer: avoids wasted reload during an active session)
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q4_K_M.gguf
+      -ngl 80
+      -c 65536
+      -np 1
+      -n 8192
+      -b 2048
+      -ub 512
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --spec-type draft-mtp
+      --spec-draft-n-max 2
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --temp 0.6
+      --top-k 20
+      --top-p 0.95
+      --min-p 0
+      --presence-penalty 0.0
+      --api-key ${env.LLAMA_API_KEY}
+
+  "qwen3-mtp-mid":
+    name: "Qwen3.6 27B MTP (reasoning, mid ctx)"
+    description: "MTP Q4_K_M — reasoning on, 98304 ctx, embedded MTP speculation"
+    ttl: 1800  # unload after 30 min idle (longer: avoids wasted reload during an active session)
+    cmd: |
+      ${llama}
+      --port ${PORT}
+      -m ${models}/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q4_K_M.gguf
+      -ngl auto
+      --fit-target 3072
+      -c 98304
+      -np 1
+      -n 8192
+      -b 2048
+      -ub 512
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      -fa auto
+      --spec-type draft-mtp
+      --spec-draft-n-max 2
+      --jinja
+      --no-warmup
+      --defrag-thold 0.1
+      --temp 0.6
+      --top-k 20
+      --top-p 0.95
+      --min-p 0
+      --presence-penalty 0.0
+      --api-key ${env.LLAMA_API_KEY}
+
 # =============================================================================
 # matrix: concurrent model combinations
 # GPU models can coexist with CPU shadow models (one of each at a time).
@@ -1075,6 +1199,10 @@ matrix:
     wmtm: qwable-mtp-mid
     orn:  ornith-35b
     ornm: ornith-35b-max
+    tc:   thinkingcap
+    tcl:  thinkingcap-large
+    wmp:  qwen3-mtp
+    wmpm: qwen3-mtp-mid
     # FastContext exploration model (4B — evicts main GPU model when requested;
     # no coexistence set, so loading it unloads whatever is resident)
     fc:  fastcontext-4b
@@ -1092,7 +1220,7 @@ matrix:
     # Any single Qwen GPU model may run alongside any single CPU shadow model.
     # Qwopus profiles intentionally run alone so stale CPU shadows do not stay
     # loaded while opencode swaps between Qwopus context sizes.
-    gpu_cpu: "(c | cm | cl | v | m | ml | mv | g31 | kv | g12 | wq | wqm | wl | wmt | wmtm | orn | ornm) & (cc | cmc | clc | vc | mc | mlc | mvc | gvc | fcc)"
+    gpu_cpu: "(c | cm | cl | v | m | ml | mv | g31 | kv | g12 | wq | wqm | wl | wmt | wmtm | orn | ornm | tc | tcl | wmp | wmpm) & (cc | cmc | clc | vc | mc | mlc | mvc | gvc | fcc)"
     # fcc (fastcontext-4b-cpu) is in gpu_cpu above so it can coexist with a GPU primary as
     # a manual shadow, but fastcontext-4b (GPU) is intentionally in NO coexistence set:
     # loading it evicts whatever GPU model is resident, giving FastContext the full card
