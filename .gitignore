@@ -11,10 +11,6 @@ __pycache__/
 
 # OpenCode directories
 skills-disabled/
-tui/
-test/
-tests/
-lib/
 
 # OpenCode package lock
 package-lock.json

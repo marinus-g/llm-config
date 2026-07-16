@@ -1,0 +1,72 @@
+[
+  {
+    "pattern": "\\brm\\s+(-\\S*r\\S*f|-\\S*f\\S*r)\\s+(\\/|~|\"\\$HOME\"|\\$HOME|\"\\$\\{HOME\\}\"|\\$\\{HOME\\})\\s*$",
+    "flags": "im",
+    "reason": "rm -rf on / or $HOME"
+  },
+  {
+    "pattern": "\\brm\\s+(-\\S*r\\S*f|-\\S*f\\S*r)\\s+(\\/|~|\"\\$HOME\"|\\$HOME|\"\\$\\{HOME\\}\"|\\$\\{HOME\\})[\\s/]",
+    "flags": "im",
+    "reason": "rm -rf rooted at / or $HOME"
+  },
+  {
+    "pattern": "\\bdd\\b[^#\\n]*\\bof\\s*=\\s*\\/dev\\/",
+    "flags": "i",
+    "reason": "dd writing to block device"
+  },
+  {
+    "pattern": "\\bmkfs(\\.\\w+)?\\s+\\/",
+    "flags": "i",
+    "reason": "mkfs on a device"
+  },
+  {
+    "pattern": "\\bgit\\s+push\\b(?!.*--force-with-lease).*\\s(--force|-f)\\b",
+    "flags": "i",
+    "reason": "git push --force (use --force-with-lease instead)"
+  },
+  {
+    "pattern": "\\b(curl|wget)\\b[^|#\\n]*\\|\\s*(sudo\\s+)?(ba)?sh\\b",
+    "flags": "i",
+    "reason": "remote code execution via curl/wget pipe to shell"
+  },
+  {
+    "pattern": "\\bchmod\\s+(-R\\s+777|777\\s+-R)\\b",
+    "flags": "i",
+    "reason": "chmod -R 777 (world-writable recursive)"
+  },
+  {
+    "pattern": ":\\(\\)\\s*\\{[^}]*:\\s*\\|\\s*:\\&\\s*\\}",
+    "flags": "",
+    "reason": "fork bomb"
+  },
+  {
+    "pattern": "\\bsed\\b[^#\\n]*\\s+-i\\b",
+    "flags": "i",
+    "reason": "in-place file edit via sed -i"
+  },
+  {
+    "pattern": "\\binstall\\b[^#\\n]*\\s+-[^\\s]*[mot]\\s+",
+    "flags": "i",
+    "reason": "file install with mode/owner"
+  },
+  {
+    "pattern": "\\btruncate\\b\\s+-s\\s+\\d+[^\\s]*\\s+[^\\s]+",
+    "flags": "",
+    "reason": "file truncation"
+  },
+  {
+    "pattern": "\\bcat\\s*>?\\s+[\\w\\/~\\.\\-_]+\\s*<<",
+    "flags": "",
+    "reason": "file write via heredoc (cat > ... <<)"
+  },
+  {
+    "pattern": "\\b(?:echo|printf)\\s+.*\\s*>\\s*[\\w\\/~\\.\\-_]+\\b",
+    "flags": "",
+    "reason": "file write via echo/printf redirect"
+  },
+  {
+    "pattern": "\\btee\\s+[\\w\\/~\\.\\-_]+\\b",
+    "flags": "",
+    "reason": "file write via tee"
+  }
+]
