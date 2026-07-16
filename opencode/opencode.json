@@ -10,7 +10,8 @@
       "name": "llama-swap (local)",
       "options": {
         "baseURL": "http://127.0.0.1:5099/v1",
-        "apiKey": "llama-local"
+        "apiKey": "llama-local",
+        "headers": { "X-Client": "opencode" }
       },
       "models": {
         "qwen3-moe-large": {
@@ -378,7 +379,7 @@
     },
     "orchestrator": {
       "mode": "primary",
-      "model": "llamaswap/ornith-35b",
+      "model": "llamaswap/qwable-q6",
       "permission": {
         "edit": "deny",
         "write": "deny",
@@ -387,7 +388,7 @@
         "question": "allow",
         "workflow_control": "deny",
         "workflow_verify": "deny",
-        "workflow_review": "allow",
+        "workflow_review": "deny",
         "workflow_commit": "deny",
         "workflow_handoff": "deny",
         "workflow_create": "deny",
@@ -406,7 +407,7 @@
     "workflow-orchestrator": {
       "mode": "primary",
       "hidden": true,
-      "model": "llamaswap/ornith-35b",
+      "model": "llamaswap/qwable-q6",
       "permission": {
         "edit": "deny",
         "write": "deny",
@@ -525,7 +526,8 @@
         "read": "deny",
         "glob": "deny",
         "grep": "deny",
-        "mcp": "allow"
+        "mcp": "allow",
+        "workflow_review": "deny"
       }
     },
     "java-expert-dev": {
@@ -543,7 +545,8 @@
         "grep": "allow",
         "webfetch": "allow",
         "mcp": "allow",
-        "external_directory": "allow"
+        "external_directory": "allow",
+        "workflow_review": "deny"
       }
     },
     "general-dev": {
@@ -588,7 +591,8 @@
         "grep": "allow",
         "webfetch": "allow",
         "mcp": "allow",
-        "external_directory": "allow"
+        "external_directory": "allow",
+        "workflow_review": "deny"
       }
     },
     "writer": {
@@ -610,7 +614,8 @@
         "glob": "allow",
         "grep": "allow",
         "mcp": "allow",
-        "external_directory": "allow"
+        "external_directory": "allow",
+        "workflow_review": "deny"
       }
     },
     "test-dev": {
@@ -628,7 +633,8 @@
         "grep": "allow",
         "webfetch": "allow",
         "mcp": "allow",
-        "external_directory": "allow"
+        "external_directory": "allow",
+        "workflow_review": "deny"
       }
     },
     "java-expert-dev-large-context": {
@@ -646,7 +652,8 @@
         "grep": "allow",
         "webfetch": "allow",
         "mcp": "allow",
-        "external_directory": "allow"
+        "external_directory": "allow",
+        "workflow_review": "deny"
       }
     },
     "vision": {

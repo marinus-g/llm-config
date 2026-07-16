@@ -44,19 +44,30 @@ CPU_SHADOWS = {
 
 
 class RouterState:
-    def __init__(self, backend: str, api_key: str, promote_interval: int, gpu_idle_grace: float) -> None:
+    def __init__(
+        self,
+        backend: str,
+        api_key: str,
+        promote_interval: int,
+        gpu_idle_grace: float,
+        swap_max_wait: float = 30.0,
+        swap_poll_interval: float = 0.5,
+    ) -> None:
         parsed = urlsplit(backend)
         self.backend_host = parsed.hostname or "127.0.0.1"
         self.backend_port = parsed.port or 5100
         self.api_key = api_key
         self.promote_interval = promote_interval
         self.gpu_idle_grace = gpu_idle_grace
+        self.swap_max_wait = swap_max_wait
+        self.swap_poll_interval = swap_poll_interval
         self._promotion_lock = threading.Lock()
         self._activity_lock = threading.Lock()
         self._gpu_inflight = 0
         self._last_gpu_finished_at = time.monotonic()
         self._gpu_prefer_until: dict[str, float] = {}
         self._gpu_context_tokens: dict[str, int] = {}
+        self._gpu_owner: dict[str, str] = {}  # canonical model → owning client tag
 
     def backend_connection(self, timeout: float = 300.0) -> http.client.HTTPConnection:
         return http.client.HTTPConnection(self.backend_host, self.backend_port, timeout=timeout)
@@ -118,11 +129,12 @@ class RouterState:
         with self._activity_lock:
             return self._gpu_inflight > 0
 
-    def start_gpu_request(self, model: str, context_tokens: int) -> None:
+    def start_gpu_request(self, model: str, context_tokens: int, client: str = "other") -> None:
         model = self.canonical_model(model)
         with self._activity_lock:
             self._gpu_inflight += 1
             self._gpu_context_tokens[model] = max(context_tokens, self._gpu_context_tokens.get(model, 0))
+            self._gpu_owner[model] = client
 
     def finish_gpu_request(self) -> None:
         with self._activity_lock:
@@ -154,58 +166,79 @@ class RouterState:
         if requested.endswith("-cpu"):
             return requested
 
-        requested_model = self.canonical_model(requested)
-        cpu_shadow = CPU_SHADOWS.get(requested_model)
+        # Contention is now handled by the swap gate (wait_for_gpu_idle) in _proxy,
+        # not by diverting to CPU shadows.  Always forward to the requested GPU model
+        # and let the gate hold the connection until the resident model is idle.
+        return requested
+
+    def wait_for_gpu_idle(self, requested_model: str, max_wait: float) -> None:
+        """Block until the resident GPU model is idle or max_wait elapses.
+
+        Called before forwarding a request that may trigger a model swap.  Prevents
+        thrash when a session is mid-tool-call (GPU looks idle to the backend, but
+        the client will resume shortly): the competing request waits out the grace
+        window instead of forcing an evict/reload cycle.
+        """
+        requested_canonical = self.canonical_model(requested_model)
+        deadline = time.monotonic() + max_wait
+        logged = False
+        while time.monotonic() < deadline:
+            active = self.active_model_names(self.running_models())
+            active_gpu = {model for model in active if not model.endswith("-cpu")}
+            # Card is free or requested model is already resident — no swap needed.
+            if not active_gpu or requested_canonical in {self.canonical_model(m) for m in active_gpu}:
+                return
+            # Resident model is idle — safe to swap.
+            if not self.gpu_busy():
+                if logged:
+                    logging.info("swap gate: %s proceeding (resident GPU now idle)", requested_model)
+                return
+            # Resident model is busy — hold the request.
+            if not logged:
+                logging.info(
+                    "swap gate: %s waiting up to %.0fs for resident GPU model to go idle",
+                    requested_model,
+                    max_wait,
+                )
+                logged = True
+            time.sleep(self.swap_poll_interval)
+        logging.info("swap gate: timeout reached for %s, allowing swap", requested_model)
+
+    def release_gpu_grace(self, owner: str = "opencode") -> bool:
+        """Expire the idle-grace timer so a swap can happen immediately.
+
+        Only fires when every resident GPU model is owned by *owner*.  If any
+        other client's model is resident (idle or not) the grace window is left
+        intact so that client's anti-thrash protection is not disturbed.
+
+        Safe to call while `_gpu_inflight > 0`: `gpu_busy()` returns True via the
+        inflight branch regardless of the grace timer, so any active stream
+        continues uninterrupted — only the soft grace portion is expired.
+        """
         active = self.active_model_names(self.running_models())
-        active_gpu = {model for model in active if not model.endswith("-cpu")}
-        active_context = self.max_active_gpu_context(active_gpu)
-        wants_gpu = prefer_gpu or self.consume_gpu_preference(requested)
+        active_gpu = {m for m in active if not m.endswith("-cpu")}
 
-        if cpu_shadow is None:
-            return requested
-
+        # Card is free — nothing to protect; clear grace unconditionally.
         if not active_gpu:
-            return requested
+            with self._activity_lock:
+                self._last_gpu_finished_at = time.monotonic() - self.gpu_idle_grace - 1
+            logging.info("release-gpu: no GPU models resident, grace cleared")
+            return True
 
-        if requested in active_gpu:
-            return requested
-
-        if wants_gpu:
-            logging.info("preferring GPU for %s by explicit request", requested)
-            return requested
-
-        if used_context_tokens > active_context:
-            logging.info(
-                "preferring GPU for %s: request context ~%s tokens > active GPU context ~%s tokens",
-                requested_model,
-                used_context_tokens,
-                active_context,
-            )
-            return requested
-
-        if (
-            not self.gpu_inflight()
-            and not self.is_orchestrator_model(requested_model)
-            and active_gpu
-            and all(self.is_orchestrator_model(model) for model in active_gpu)
-        ):
-            logging.info("preferring GPU for %s over idle orchestrator %s", requested, ", ".join(sorted(active_gpu)))
-            return requested
-
-        if self.gpu_inflight():
-            return cpu_shadow
-
-        if self.is_orchestrator_model(requested_model):
-            return cpu_shadow
-
-        if active_context == 0 and wants_gpu:
-            logging.info("preferring GPU for %s while %s is loaded but idle", requested, ", ".join(sorted(active_gpu)))
-            return requested
-
-        if not self.gpu_busy():
-            return requested
-
-        return cpu_shadow
+        # Check that every resident GPU model belongs to the requesting owner.
+        with self._activity_lock:
+            for m in active_gpu:
+                recorded_owner = self._gpu_owner.get(self.canonical_model(m), "other")
+                if recorded_owner != owner:
+                    logging.info(
+                        "release-gpu: resident model %s owned by %r (not %r), skipping",
+                        m, recorded_owner, owner,
+                    )
+                    return False
+            # All resident GPU models are ours — safe to expire grace.
+            self._last_gpu_finished_at = time.monotonic() - self.gpu_idle_grace - 1
+        logging.info("release-gpu: grace expired for owner=%r (resident: %s)", owner, active_gpu)
+        return True
 
     def promote_if_cpu_only(self) -> None:
         if not self._promotion_lock.acquire(blocking=False):
@@ -272,6 +305,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if self.path == "/router/prefer-gpu":
             self._handle_prefer_gpu()
             return
+        if self.path == "/router/release-gpu":
+            self._handle_release_gpu()
+            return
         self._proxy()
 
     def do_OPTIONS(self) -> None:
@@ -282,6 +318,25 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt: str, *args: Any) -> None:
         logging.info("%s - %s", self.client_address[0], fmt % args)
+
+    def _handle_release_gpu(self) -> None:
+        body = self.rfile.read(int(self.headers.get("Content-Length", "0") or "0"))
+        owner = "opencode"
+        try:
+            if body:
+                payload = json.loads(body.decode("utf-8"))
+                if isinstance(payload.get("owner"), str) and payload["owner"]:
+                    owner = payload["owner"].strip().lower()
+        except Exception:
+            pass
+
+        released = self.state.release_gpu_grace(owner)
+        response = json.dumps({"ok": True, "released": released}).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(response)))
+        self.end_headers()
+        self.wfile.write(response)
 
     def _handle_prefer_gpu(self) -> None:
         body = self.rfile.read(int(self.headers.get("Content-Length", "0") or "0"))
@@ -317,6 +372,18 @@ class ProxyHandler(BaseHTTPRequestHandler):
             body, routed_model, used_context_tokens = self._maybe_rewrite_chat_body(body)
             headers["Content-Length"] = str(len(body))
 
+        # Swap gate: hold the request until the resident GPU model goes idle, so
+        # a tool-call pause in another session doesn't cause an immediate evict/reload.
+        # Runs before GPU accounting and before opening the backend connection so
+        # there is no streaming-corruption risk (no bytes sent to the client yet).
+        if (
+            self.command == "POST"
+            and path.startswith("/v1/chat/completions")
+            and routed_model is not None
+            and not routed_model.endswith("-cpu")
+        ):
+            self.state.wait_for_gpu_idle(routed_model, self.state.swap_max_wait)
+
         # fastcontext-4b always goes to GPU (it evicts the resident primary model).
         # If the GPU load fails before any response bytes are sent, transparently
         # retry on the CPU fallback instead of surfacing a 502 to the client.
@@ -328,7 +395,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
         track_gpu_request = routed_model is not None and not routed_model.endswith("-cpu")
         if track_gpu_request:
-            self.state.start_gpu_request(routed_model, used_context_tokens)
+            client_tag = (self.headers.get("X-Client") or "other").strip().lower()
+            self.state.start_gpu_request(routed_model, used_context_tokens, client=client_tag)
 
         conn = self.state.backend_connection()
         # Track whether we have already forwarded the response status/headers to the
@@ -500,13 +568,32 @@ def main() -> None:
     parser.add_argument("--backend", default="http://127.0.0.1:5100")
     parser.add_argument("--api-key", default="llama-local")
     parser.add_argument("--promote-interval", type=int, default=10)
-    parser.add_argument("--gpu-idle-grace", type=float, default=15)
+    parser.add_argument("--gpu-idle-grace", type=float, default=20)
+    parser.add_argument(
+        "--swap-max-wait",
+        type=float,
+        default=30.0,
+        help="Max seconds to hold a competing GPU request while the resident model is busy (0 = disable gate)",
+    )
+    parser.add_argument(
+        "--swap-poll-interval",
+        type=float,
+        default=0.5,
+        help="Poll cadence (seconds) inside the swap gate",
+    )
     args = parser.parse_args()
 
     host, port_text = args.listen.rsplit(":", 1)
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
-    state = RouterState(args.backend, args.api_key, args.promote_interval, args.gpu_idle_grace)
+    state = RouterState(
+        args.backend,
+        args.api_key,
+        args.promote_interval,
+        args.gpu_idle_grace,
+        swap_max_wait=args.swap_max_wait,
+        swap_poll_interval=args.swap_poll_interval,
+    )
     start_promoter(state)
 
     server = ThreadingHTTPServer((host, int(port_text)), ProxyHandler)
